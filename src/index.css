@@ -1,0 +1,178 @@
+@import "tailwindcss"; 
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/dm-sans";
+@import "@fontsource-variable/jetbrains-mono";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --text: 270 10% 45%;
+  --text-h: 210 40% 96%;
+  --bg: 222 47% 11%;
+  --border: 224 224 231;
+  --card: 222 47% 18%;
+  --accent: 270 80% 60%;
+  --radius: 1rem;
+
+  --glow-blue: 200 90% 60%;
+  --glow-cyan: 185 80% 50%;
+  --glow-purple: 270 70% 60%;
+  --glow-orange: 25 90% 55%;
+  --glow-green: 130 60% 55%;
+  --glow-pink: 320 80% 65%;
+  --glow-yellow: 50 90% 60%;
+
+  /* ShadCN variables */
+  --background: oklch(0.9551 0 0); /* light-mode soft purple background */
+  --foreground: oklch(0.3211 0 0); /* dark text for light mode */
+  --card-foreground: oklch(0.3211 0 0);
+  --popover: oklch(0.9702 0 0);
+  --popover-foreground: oklch(0.3211 0 0);
+  --primary: oklch(0.4891 0 0);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.9067 0 0);
+  --secondary-foreground: oklch(0.3211 0 0);
+  --muted: oklch(0.8853 0 0);
+  --muted-foreground: oklch(0.5103 0 0);
+  --accent-foreground: oklch(0.3211 0 0);
+  --destructive: oklch(0.5594 0.19 25.8625);
+  --destructive-foreground: oklch(1 0 0);
+  --input: oklch(0.9067 0 0);
+  --ring: oklch(0.4891 0 0);
+
+  /* Light/Dark dynamic card variables */
+  --card-light: var(--background); /* match page background in light mode */
+  --card-dark: rgba(30, 41, 59, 0.55); /* original dark glass */
+  --card-backdrop-dark: blur(12px);
+}
+
+.dark {
+  --background: oklch(0.2178 0 0);
+  --foreground: oklch(0.8853 0 0); /* white text for dark mode */
+  --card: oklch(0.2435 0 0);
+  --card-foreground: oklch(0.8853 0 0);
+  --popover: oklch(0.2435 0 0);
+  --popover-foreground: oklch(0.8853 0 0);
+  --primary: oklch(0.7058 0 0);
+  --primary-foreground: oklch(0.2178 0 0);
+  --secondary: oklch(0.3092 0 0);
+  --secondary-foreground: oklch(0.8853 0 0);
+  --muted: oklch(0.285 0 0);
+  --muted-foreground: oklch(0.5999 0 0);
+  --accent: oklch(0.3715 0 0);
+  --accent-foreground: oklch(0.8853 0 0);
+  --destructive: oklch(0.6591 0.153 22.1703);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.329 0 0);
+  --input: oklch(0.3092 0 0);
+  --ring: oklch(0.7058 0 0);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--background);
+  font-family: 'Inter', sans-serif;
+  color: var(--foreground);
+}
+
+
+@layer base {
+  * {
+    border-color: var(--border);
+    outline-color: var(--ring);
+  }
+
+  body, h1, h2, h3, h4, h5, h6 {
+    color: var(--foreground); /* dynamically change text color for light/dark mode */
+  }
+
+  header, .header {
+    background-color: var(--background); /* header matches background */
+    color: var(--foreground); /* dynamic text color */
+  }
+}
+
+
+.glass-card {
+  background: var(--card-light); /* match light-mode background */
+  border-radius: 14px;
+  padding: 1.25rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 32px rgba(0,0,0,0.35);
+}
+
+.dark .glass-card {
+  background: var(--card-dark);
+  backdrop-filter: var(--card-backdrop-dark);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-sidebar {
+  background: linear-gradient(
+    180deg,
+    rgba(15,23,42,0.95),
+    rgba(2,6,23,0.95)
+  );
+  border-right: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: blur(12px);
+}
+
+.bg-sidebar-active {
+  background: linear-gradient(
+    90deg,
+    rgba(56,189,248,0.2),
+    rgba(59,130,246,0.2)
+  );
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 4s linear infinite;
+}
+
+
+.spin-multi {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: conic-gradient(
+    orange 0deg 120deg,
+    green 120deg 240deg,
+    purple 240deg 360deg
+  );
+  animation: spin-slow 4s linear infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.spin-multi::after {
+  content: '';
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--background);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
