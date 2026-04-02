@@ -291,21 +291,9 @@ export default function Dashboard() {
                         className="rounded-xl border border-white/10 bg-[#0f1730] p-4 text-left hover:border-blue-500/50 transition"
                       >
                         <div className="flex items-center justify-between">
-                          <p className="font-semibold">{project.name}</p>
-                          <span className="text-xs">{project.progress ?? 0}%</span>
+                          <p className="font-semibold text-lg">{project.name}</p>
                         </div>
                         <p className="text-xs text-slate-400 mt-1">{project.description ?? "No description"}</p>
-                        <div className="h-1.5 rounded-full bg-[#253250] mt-3">
-                          <div
-                            className="h-1.5 rounded-full bg-blue-500"
-                            style={{ width: `${project.progress ?? 0}%` }}
-                          />
-                        </div>
-                        <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-                          <span>{project?.tickets?.closed ?? 0} Closed</span>
-                          <span>{project?.tickets?.inProgress ?? 0} In Progress</span>
-                          <span>{project?.tickets?.open ?? 0} Open</span>
-                        </div>
 
                         <div className="mt-4 flex flex-wrap gap-2">
                           <button

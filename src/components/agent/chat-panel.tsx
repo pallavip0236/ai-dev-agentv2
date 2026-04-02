@@ -113,13 +113,19 @@ export function ChatPanel({
     overflow-hidden backdrop-blur-xl">
 
       {/* HEADER */}
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10 bg-white/5 backdrop-blur-md">
-        <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-          <MessageCircle className="w-4 h-4 text-cyan-400" />
+      <div className="flex flex-col gap-2 px-5 py-4 border-b border-white/10 bg-white/5 backdrop-blur-md">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+            <MessageCircle className="w-4 h-4 text-cyan-400" />
+          </div>
+          <p className="text-sm font-semibold text-white">Chat Workspace</p>
         </div>
-        <div>
-          <p className="text-sm font-semibold text-white">Chat</p>
-          <p className="text-xs text-gray-400">{sortedRuns.length} messages</p>
+        <div className="flex items-center gap-3 text-xs text-gray-300">
+          <span>{projectId ? `Project: ${projectId}` : "No project selected"}</span>
+          <span className="text-gray-500">|</span>
+          <span>{activeRunId ? `Run: ${activeRunId}` : "No run selected"}</span>
+          <span className="text-gray-500">|</span>
+          <span>{sortedRuns.length} message threads</span>
         </div>
       </div>
 

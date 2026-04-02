@@ -467,19 +467,7 @@ return (
         )}
       </div>
 
-      <div>
-        Project Status:
-        <span className="ml-2 font-semibold text-white">
-          {approvalStatus || "—"}
-        </span>
-      </div>
 
-      <div>
-        Sprint ID:
-        <span className="ml-2 font-semibold text-white">
-          {approvalProject?.jiraSprintId ?? "—"}
-        </span>
-      </div>
 
     </div>
 
