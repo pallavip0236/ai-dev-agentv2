@@ -8,7 +8,7 @@ import {
   Settings,
   LogOut,
   Cpu,
-  Link2
+  // Link2
 } from "lucide-react";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
@@ -27,7 +27,7 @@ const navItems = [
   },
   { icon: Ticket, label: "Tickets" },
   { icon: Activity, label: "Activity" },
-  { icon: Link2, label: "Jira", to: "/dashboard/jira" },
+  // { icon: Link2, label: "Jira", to: "/dashboard/jira" },
 
   // ✅ ADDED THIS
   { icon: FileText, label: "Logs", to: "/dashboard/logs" },

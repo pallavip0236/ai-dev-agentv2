@@ -1,7 +1,7 @@
 import { CircleDot, Ellipsis, FolderKanban, Plus, Search } from "lucide-react";
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -9,7 +9,7 @@ import { useNavigate } from "react-router";
 import { useSearchParams } from "react-router";
 
 import { api } from "@/lib/api";
-import { useCreateProject } from "@/hooks/use-projects";
+import { useCreateProject, useLinkJira, useApprovePlanning } from "@/hooks/use-projects";
 import {
   Dialog,
   DialogContent,
@@ -152,7 +152,6 @@ export default function Jira() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [approveProjectId, setApproveProjectId] = useState("");
   const [approveRunId, setApproveRunId] = useState("");
-  const [jiraProjectKey] = useState("");
 
   useEffect(() => {
     const projectIdFromUrl = searchParams.get("projectId");
@@ -203,18 +202,13 @@ export default function Jira() {
     }
   });
 
-  const linkJira = useMutation({
-    mutationFn: async ({ projectId, projectKey }: { projectId: string; projectKey: string }) => {
-      return api.post(`/api/v1/projects/${projectId}/jira/link`, { projectKey });
-    },
-    onSuccess: () => {
-      toast.success("Jira linked to project");
-      if (approveProjectId.trim()) {
-        approvalProjectQuery.refetch();
-      }
-    },
-    onError: (err) => toast.error(apiErrorMessage(err))
-  });
+  const linkJira = useLinkJira();
+
+  useEffect(() => {
+    if (linkJira.isSuccess && approveProjectId.trim()) {
+      approvalProjectQuery.refetch();
+    }
+  }, [linkJira.isSuccess, approveProjectId, approvalProjectQuery]);
 
   const sprints = Array.isArray(sprintsQuery.data) ? sprintsQuery.data : [];
 
@@ -237,13 +231,7 @@ export default function Jira() {
     }
   });
 
-  const approvePlanning = useMutation({
-    mutationFn: async ({ projectId, runId }: { projectId: string; runId: string }) => {
-      return api.post(`/api/v1/projects/${projectId}/agent/planning/approve`, { runId });
-    },
-    onSuccess: () => toast.success("Planning approved"),
-    onError: (err) => toast.error(apiErrorMessage(err))
-  });
+  const approvePlanning = useApprovePlanning(approveProjectId.trim());
 
   const rawIssues = Array.isArray(issuesQuery.data) ? issuesQuery.data : [];
   const approvalProject = approvalProjectQuery.data;
@@ -252,6 +240,7 @@ export default function Jira() {
     approvalStatus === "PLANNED" &&
     Boolean(approvalProject?.jiraSprintId) &&
     Boolean((approveRunId.trim() || localStorage.getItem("lastRunId")));
+
   const columns = useMemo(() => {
     return {
       todo: rawIssues.filter((issue) => normalizeStatus(issue.status) === "todo"),
@@ -355,21 +344,25 @@ return (
           <span>Search anything...</span>
         </div>
 
-
 <Button
   type="button"
   className="bg-gradient-to-r from-cyan-400 to-blue-500 text-white px-4 py-2 text-sm font-medium hover:opacity-90 gap-2 shadow-md"
   disabled={approvePlanning.isPending || !canApprove}
   onClick={() => {
-    const projectId = localStorage.getItem("lastProjectId") || "";
     const runId = localStorage.getItem("lastRunId") || "";
 
-    if (!projectId || !runId) {
+    if (!runId) {
       toast.error("Approval data missing.");
       return;
     }
 
-    approvePlanning.mutate({ projectId, runId });
+    approvePlanning.mutate({ runId }, {
+      onSuccess: () => {
+        // Store project id and run id locally
+        localStorage.setItem("lastProjectId", approveProjectId);
+        localStorage.setItem("lastRunId", runId);
+      }
+    });
   }}
 >
   <CircleDot className="h-4 w-4" />
@@ -377,22 +370,7 @@ return (
 </Button>
 
 
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => {
-            const projectId = approveProjectId.trim() || localStorage.getItem("lastProjectId") || "";
-            const projectKey = jiraProjectKey.trim();
-            if (!projectId || !projectKey) {
-              toast.error("Provide projectId and Jira project key");
-              return;
-            }
-            linkJira.mutate({ projectId, projectKey });
-          }}
-          disabled={linkJira.isPending}
-        >
-     
-        </Button>
+
 
         <Button
           type="button"

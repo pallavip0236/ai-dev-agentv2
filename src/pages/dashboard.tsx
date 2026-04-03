@@ -14,6 +14,11 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AgentCard } from "@/components/agent-card";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useCreateProject, useLinkJira } from "@/hooks/use-projects";
 import ModeToggle from "@/components/mode-toggle";
 import {
   agents,
@@ -23,6 +28,7 @@ import {
 } from "@/lib/data";
 import { useProjects } from "@/hooks/use-projects";
 import { useSignout } from "@/hooks/use-auth";
+import { FolderPlus } from "lucide-react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 
 type MenuKey =
@@ -53,6 +59,15 @@ export default function Dashboard() {
   const [filter, setFilter] = useState("all");
   const [selectedAgentId, setSelectedAgentId] = useState(agents[0]?.id ?? "");
   const [selectedProjectId, setSelectedProjectId] = useState("");
+
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkProjectId, setLinkProjectId] = useState("");
+  const [linkProjectKey, setLinkProjectKey] = useState("");
+
+  const createProject = useCreateProject();
+  const linkJira = useLinkJira();
 
   const { data: projectsData, isLoading: projectsLoading } = useProjects();
 
@@ -99,10 +114,10 @@ export default function Dashboard() {
       setView("projects-overview");
       return;
     }
-    if (location.pathname === "/dashboard/jira") {
-      setMenu("jira");
-      return;
-    }
+    // if (location.pathname === "/dashboard/jira") {
+    //   setMenu("jira");
+    //   return;
+    // }
     if (location.pathname === "/dashboard/logs") {
       setMenu("logs");
       return;
@@ -144,10 +159,10 @@ export default function Dashboard() {
                     }
 
                     if (item.key === "jira") {
-                      navigate("/dashboard/jira");
-                      setMenu("jira");
-                      return;
-                    }
+                      //  navigate("/dashboard/jira");
+                      //  setMenu("jira");
+                       return;
+                     }
 
                     if (item.key === "logs") {
                       navigate("/dashboard/logs");
@@ -277,61 +292,219 @@ export default function Dashboard() {
 
             {menu === "projects" && view === "projects-overview" && (
               <div className="space-y-4">
-                <div>
-                  <h2 className="text-xl font-bold">Projects</h2>
-                  <p className="text-sm text-slate-400">{projectList.length} active projects</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold">Projects</h2>
+                    <p className="text-sm text-slate-400">{projectList.length} projects</p>
+                  </div>
+<Button
+  onClick={() => setCreateDialogOpen(true)}
+  className="
+    px-4 py-2 text-sm font-medium rounded-lg
+    bg-gradient-to-r from-cyan-500 to-blue-500
+    text-black
+    hover:from-cyan-400 hover:to-blue-400
+    shadow-md hover:shadow-cyan-500/30
+    transition-all duration-200
+    flex items-center gap-2
+  "
+>
+  <FolderPlus size={16} />
+  Create Project
+</Button>
                 </div>
+
                 {projectsLoading ? (
                   <div className="text-sm text-slate-400">Loading projects…</div>
                 ) : (
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                    {projectList.map((project: any) => (
-                      <div
-                        key={project.id}
-                        className="rounded-xl border border-white/10 bg-[#0f1730] p-4 text-left hover:border-blue-500/50 transition"
-                      >
-                        <div className="flex items-center justify-between">
-                          <p className="font-semibold text-lg">{project.name}</p>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-1">{project.description ?? "No description"}</p>
+                    {projectList.map((project: any) => {
+                      const createdAt = project.createdAt
+                        ? new Date(project.createdAt).toLocaleString()
+                        : "N/A";
+                      const jiraKey = project.jiraProjectKey ?? project.jiraProject?.key ?? project.jiraProjectKey;
+                      const jiraLinked = Boolean(jiraKey);
 
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              localStorage.setItem("lastProjectId", project.id);
-                              const existingRunId = localStorage.getItem("lastRunId");
-                              setSelectedProjectId(project.id);
-                              setView("project-detail");
-                              if (existingRunId) {
-                                navigate(`/dashboard/projects/${project.id}?run=${existingRunId}`);
-                              } else {
-                                navigate(`/dashboard/projects/${project.id}`);
-                              }
-                            }}
-                            className="px-3 py-1.5 rounded-md bg-cyan-500 text-black text-xs font-medium hover:bg-cyan-400"
-                          >
-                            Chat
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              localStorage.setItem("lastProjectId", project.id);
-                              const existingRunId = localStorage.getItem("lastRunId");
-                              const params = new URLSearchParams();
-                              params.set("projectId", project.id);
-                              if (existingRunId) params.set("runId", existingRunId);
-                              navigate(`/dashboard/jira?${params.toString()}`);
-                            }}
-                            className="px-3 py-1.5 rounded-md bg-blue-500 text-white text-xs font-medium hover:bg-blue-400"
-                          >
-                            Jira
-                          </button>
+                      return (
+                        <div
+                          key={project.id}
+                          className="rounded-xl border border-white/10 bg-[#0f1730] p-4 text-left hover:border-blue-500/50 transition"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-lg font-semibold">{project.name}</p>
+                              <p className="text-xs text-slate-400">Created: {createdAt}</p>
+                              <p className="text-xs text-slate-400">{project.description ?? "No description"}</p>
+                            </div>
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                jiraLinked ? "bg-emerald-500 text-black" : "bg-slate-700 text-white"
+                              }`}
+                            >
+                              {jiraLinked ? `Jira: ${jiraKey}` : "Jira not linked"}
+                            </span>
+                          </div>
+
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!jiraLinked) {
+                                  toast.error("Link Jira first to use Chat.");
+                                  return;
+                                }
+                                localStorage.setItem("lastProjectId", project.id);
+                                const existingRunId = localStorage.getItem("lastRunId");
+                                setSelectedProjectId(project.id);
+                                setView("project-detail");
+                                if (existingRunId) {
+                                  navigate(`/dashboard/projects/${project.id}?run=${existingRunId}`);
+                                } else {
+                                  navigate(`/dashboard/projects/${project.id}`);
+                                }
+                              }}
+                              className={`px-3 py-1.5 rounded-md text-xs font-medium ${
+                                jiraLinked
+                                  ? "bg-cyan-500 text-black hover:bg-cyan-400"
+                                  : "bg-slate-700 text-slate-300 cursor-not-allowed"
+                              }`}
+                              disabled={!jiraLinked}
+                            >
+                              Chat
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLinkProjectId(project.id);
+                                setLinkDialogOpen(true);
+                                setLinkProjectKey(jiraKey ?? "");
+                              }}
+                              className="px-3 py-1.5 rounded-md bg-blue-500 text-white text-xs font-medium hover:bg-blue-400"
+                            >
+                              {jiraLinked ? "Re-link Jira" : "Link Jira"}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
+
+                <Dialog
+                  open={createDialogOpen}
+                  onOpenChange={(v) => {
+                    setCreateDialogOpen(v);
+                    if (!v) setNewProjectName("");
+                  }}
+                >
+                  <DialogContent className="glass border-glass-border sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Create new project</DialogTitle>
+                      <DialogDescription>
+                        Provide a project name and create it.
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 mt-2">
+                      <Input
+                        placeholder="Project name"
+                        value={newProjectName}
+                        onChange={(e) => setNewProjectName(e.target.value)}
+                        className="bg-input/50 border-border/50"
+                        autoFocus
+                      />
+
+                      <div className="flex justify-end gap-2">
+                        <Button onClick={() => setCreateDialogOpen(false)} variant="ghost">
+                          Cancel
+                        </Button>
+                        <Button
+                          disabled={!newProjectName.trim() || createProject.isPending}
+                          onClick={() => {
+                            if (!newProjectName.trim()) return;
+                            createProject.mutate(
+                              { name: newProjectName.trim() },
+                              {
+                                onSuccess: (response: any) => {
+                                  toast.success("Project created");
+                                  setCreateDialogOpen(false);
+                                  setNewProjectName("");
+                                  if (response?.data?.id) {
+                                    localStorage.setItem("lastProjectId", response.data.id);
+                                  }
+                                },
+                                onError: (err: any) => {
+                                  toast.error(err?.message ?? "Failed to create project");
+                                }
+                              }
+                            );
+                          }}
+                        >
+                          {createProject.isPending ? "Creating..." : "Create"}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog
+                  open={linkDialogOpen}
+                  onOpenChange={(v) => {
+                    setLinkDialogOpen(v);
+                    if (!v) {
+                      setLinkProjectId("");
+                      setLinkProjectKey("");
+                    }
+                  }}
+                >
+                  <DialogContent className="glass border-glass-border sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Link Jira Project</DialogTitle>
+                      <DialogDescription>
+                        Add Jira project key (e.g. SCRUM) for this project.
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 mt-2">
+                      <Input
+                        placeholder="Jira project key"
+                        value={linkProjectKey}
+                        onChange={(e) => setLinkProjectKey(e.target.value)}
+                        className="bg-input/50 border-border/50"
+                        autoFocus
+                      />
+
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" onClick={() => setLinkDialogOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button
+                          disabled={!linkProjectKey.trim() || !linkProjectId || linkJira.isPending}
+                          onClick={() => {
+                            if (!linkProjectId || !linkProjectKey.trim()) return;
+                            linkJira.mutate(
+                              { projectId: linkProjectId, projectKey: linkProjectKey.trim() },
+                              {
+                                onSuccess: () => {
+                                  toast.success("Jira linked successfully");
+                                  setLinkDialogOpen(false);
+                                  setLinkProjectId("");
+                                  setLinkProjectKey("");
+                                },
+                                onError: (err: any) => {
+                                  toast.error(err?.message ?? "Failed to link Jira");
+                                }
+                              }
+                            );
+                          }}
+                        >
+                          {linkJira.isPending ? "Linking..." : "Link Jira"}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             )}
 

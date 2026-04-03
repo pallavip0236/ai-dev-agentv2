@@ -1,10 +1,21 @@
 import { useForm } from "@tanstack/react-form";
-import { ArrowUp, Loader2, MessageCircle } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { ArrowUp, Loader2, MessageCircle, Link } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { z } from "zod";
-import { useAgentRunSocket } from "@/hooks/use-agent-run-socket";
-import { useAgentRuns, useCreateAgentRun } from "@/hooks/use-projects";
+import { useAgentRuns, useStartPlanning, useLinkJira } from "@/hooks/use-projects";
+import { api } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 
 const promptSchema = z.object({
   prompt: z.string().min(1).max(10000)
@@ -25,7 +36,24 @@ export function ChatPanel({
 }: ChatPanelProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const { data: runsData, isLoading } = useAgentRuns(projectId);
-  const createRun = useCreateAgentRun(projectId);
+  const startPlanning = useStartPlanning(projectId);
+  const linkJira = useLinkJira(projectId);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [jiraProjectKey, setJiraProjectKey] = useState("");
+
+  const projectQuery = useQuery({
+    queryKey: ["project", projectId],
+    queryFn: async () => {
+      const { data } = await api.get(`/api/v1/projects/${projectId}`);
+      return data as {
+        id: string;
+        jiraProjectKey?: string | null;
+        jiraSprintId?: number | null;
+      };
+    }
+  });
+
+  const isJiraLinked = Boolean(projectQuery.data?.jiraProjectKey || projectQuery.data?.jiraSprintId);
 
   const runs = runsData?.data ?? [];
 
@@ -42,12 +70,11 @@ export function ChatPanel({
   const isActiveRunBusy =
     activeRun?.status === "PENDING" || activeRun?.status === "RUNNING";
 
-  const { textChunks } = useAgentRunSocket({
-    projectId,
-    runId: activeRunId ?? "",
-    initialStatus: activeRun?.status ?? "PENDING",
-    enabled: Boolean(activeRunId)
-  });
+  const rawText =
+    activeRun?.textChunks ?? activeRun?.output ?? activeRun?.response ?? "";
+  const textChunks = Array.isArray(rawText)
+    ? rawText.join("")
+    : String(rawText ?? "");
 
   const form = useForm({
     defaultValues: { prompt: "" },
@@ -60,24 +87,21 @@ export function ChatPanel({
       }
     },
     onSubmit: async ({ value }) => {
-      try {
-        const res = await createRun.mutateAsync({ prompt: value.prompt });
+      if (!isJiraLinked) {
+        toast.error("Please link Jira first before starting planning.");
+        return;
+      }
 
-        if (res?.status === 400) {
-          toast.error("A run is already in progress for this project");
-          return;
-        }
+      try {
+        const result = await startPlanning.mutateAsync({ prompt: value.prompt });
 
         const createdRunId =
-          (res as any)?.body?.id ??
-          (res as any)?.body?.runId ??
-          (res as any)?.body?.planningRunId ??
-          (res as any)?.body?.run?.id ??
-          (res as any)?.data?.id ??
-          (res as any)?.data?.runId ??
-          (res as any)?.data?.planningRunId ??
-          (res as any)?.data?.run?.id ??
-          (res as any)?.data?.body?.id;
+          (result as any)?.id ??
+          (result as any)?.runId ??
+          (result as any)?.planningRunId ??
+          (result as any)?.data?.id ??
+          (result as any)?.data?.runId ??
+          (result as any)?.data?.planningRunId;
 
         if (!createdRunId) {
           toast.error("Run started but id was not returned");
@@ -114,18 +138,29 @@ export function ChatPanel({
 
       {/* HEADER */}
       <div className="flex flex-col gap-2 px-5 py-4 border-b border-white/10 bg-white/5 backdrop-blur-md">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-            <MessageCircle className="w-4 h-4 text-cyan-400" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+              <MessageCircle className="w-4 h-4 text-cyan-400" />
+            </div>
+            <p className="text-sm font-semibold text-white">Chat Workspace</p>
           </div>
-          <p className="text-sm font-semibold text-white">Chat Workspace</p>
+          {!isJiraLinked && (
+            <Button
+              type="button"
+              onClick={() => setLinkDialogOpen(true)}
+              className="bg-cyan-500 hover:bg-cyan-600 text-white px-3 py-1 text-xs gap-1"
+            >
+              <Link className="w-3 h-3" />
+              Link Jira
+            </Button>
+          )}
         </div>
         <div className="flex items-center gap-3 text-xs text-gray-300">
           <span>{projectId ? `Project: ${projectId}` : "No project selected"}</span>
           <span className="text-gray-500">|</span>
-          <span>{activeRunId ? `Run: ${activeRunId}` : "No run selected"}</span>
-          <span className="text-gray-500">|</span>
           <span>{sortedRuns.length} message threads</span>
+          {isJiraLinked && <span className="text-green-400">Jira Linked</span>}
         </div>
       </div>
 
@@ -245,11 +280,13 @@ export function ChatPanel({
                     }
                   }}
                   placeholder={
-                    isActiveRunBusy
+                    !isJiraLinked
+                      ? "Link Jira first to start planning..."
+                      : isActiveRunBusy
                       ? "Agent is typing..."
                       : "Message the agent..."
                   }
-                  disabled={isActiveRunBusy}
+                  disabled={isActiveRunBusy || !isJiraLinked}
                   rows={2}
                   className="w-full bg-transparent px-4 py-3 pr-14 text-sm text-white 
                   placeholder:text-gray-400 outline-none resize-none"
@@ -257,10 +294,10 @@ export function ChatPanel({
 
                 <button
                   type="submit"
-                  disabled={isActiveRunBusy}
+                  disabled={isActiveRunBusy || !isJiraLinked}
                   className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl 
                   bg-gradient-to-r from-cyan-400 to-blue-500 
-                  text-white flex items-center justify-center shadow-lg hover:scale-105 transition"
+                  text-white flex items-center justify-center shadow-lg hover:scale-105 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isActiveRunBusy ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -273,6 +310,71 @@ export function ChatPanel({
           </form.Field>
         </form>
       </div>
+
+      <Dialog
+        open={linkDialogOpen}
+        onOpenChange={(v) => {
+          setLinkDialogOpen(v);
+          if (!v) setJiraProjectKey("");
+        }}
+      >
+        <DialogContent className="glass border-glass-border sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Link Jira Project</DialogTitle>
+            <DialogDescription className="text-muted-foreground text-sm">
+              Enter your Jira project key to link this project.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-2">
+            <Field>
+              <FieldLabel htmlFor="jira-key" className="text-sm text-muted-foreground">
+                Jira Project Key
+              </FieldLabel>
+              <Input
+                id="jira-key"
+                value={jiraProjectKey}
+                onChange={(e) => setJiraProjectKey(e.target.value)}
+                placeholder="e.g. SCRUM"
+                className="bg-input/50 border-border/50 focus:border-cyan/50 focus:ring-cyan/20"
+                autoFocus
+              />
+            </Field>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setLinkDialogOpen(false)}
+                className="text-muted-foreground"
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="button"
+                disabled={!jiraProjectKey.trim() || linkJira.isPending}
+                onClick={async () => {
+                  try {
+                    await linkJira.mutateAsync({ projectKey: jiraProjectKey.trim() });
+                    toast.success("Jira linked successfully!");
+                    setLinkDialogOpen(false);
+                    setJiraProjectKey("");
+                    projectQuery.refetch(); // Refresh project data
+                  } catch (err) {
+                    toast.error(
+                      err instanceof Error ? err.message : "Failed to link Jira"
+                    );
+                  }
+                }}
+                className="bg-cyan text-background hover:bg-cyan/90 font-medium gap-2"
+              >
+                {linkJira.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Link Project"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

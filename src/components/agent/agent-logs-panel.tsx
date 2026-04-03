@@ -1,27 +1,28 @@
 import { Terminal } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 
-import { useAgentRunSocket, type LogLine } from "@/hooks/use-agent-run-socket";
-
-type RunStatus = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED";
+import { useAgentRun, type LogLine } from "@/hooks/use-projects";
 
 export function AgentLogsPanel({
   projectId,
-  runId,
-  runStatus
+  runId
 }: {
   projectId: string;
   runId: string | null;
-  runStatus: RunStatus;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const { logs, isConnected } = useAgentRunSocket({
-    projectId,
-    runId: runId ?? "",
-    initialStatus: runStatus,
-    enabled: Boolean(runId)
-  });
+  const { data: runData } = useAgentRun(projectId, runId ?? "");
+
+  const logs = useMemo<LogLine[]>(
+    () =>
+      Array.isArray(runData?.logs)
+        ? runData.logs
+        : Array.isArray(runData?.data?.logs)
+        ? runData.data.logs
+        : [],
+    [runData]
+  );
 
   // keep the view pinned to newest log line
   useEffect(() => {
@@ -63,12 +64,6 @@ export function AgentLogsPanel({
         <div className="flex items-center gap-2">
           <Terminal className="w-4 h-4 text-cyan" />
           <span className="text-sm font-semibold text-foreground">Agent Logs</span>
-          {isConnected && (
-            <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-cyan animate-pulse" />
-              <span className="text-xs font-mono text-cyan">live</span>
-            </div>
-          )}
         </div>
         <span className="text-xs text-muted-foreground">
           {logs.length} entries

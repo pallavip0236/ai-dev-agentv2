@@ -30,7 +30,6 @@ export default function ProjectPage() {
     runIdFromUrl ?? null
   );
 
-  // restore the last run for this project if open from Chat button
   useEffect(() => {
     if (!activeRunId && projectId) {
       const storedLastProject = localStorage.getItem("lastProjectId");
@@ -78,13 +77,6 @@ export default function ProjectPage() {
     }
   };
 
-  const activeRun = runs.find((r: any) => r.id === activeRunId);
-  const runStatus = (activeRun?.status ?? "PENDING") as
-    | "PENDING"
-    | "RUNNING"
-    | "COMPLETED"
-    | "FAILED"
-    | "CANCELLED";
 
   if (projectLoading) {
     return (
@@ -155,7 +147,7 @@ export default function ProjectPage() {
 
           {/* right: streaming agent logs */}
           <ResizablePanel defaultSize={50}>
-            <AgentLogsPanel projectId={projectId ?? ""} runId={activeRunId} runStatus={runStatus} />
+            <AgentLogsPanel projectId={projectId ?? ""} runId={activeRunId} />
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>

@@ -13,7 +13,7 @@ import VerifyPage from "@/pages/auth/verify";   // ✅ ADDED THIS LINE
 import Dashboard from "@/pages/dashboard";
 import ProjectPage from "@/pages/dashboard/project/index";
 import Logs from "@/components/logs";
-import Jira from "@/components/Jira";
+// import Jira from "@/components/Jira";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,7 +74,7 @@ export default function App() {
           >
             <Route path="projects" element={<Dashboard />} />
             <Route path="projects/:projectId" element={<ProjectPage />} />
-            <Route path="jira" element={<Jira />} />
+            {/* <Route path="jira" element={<Jira />} /> */}
             <Route path="logs" element={<Logs />} />
           </Route>
 

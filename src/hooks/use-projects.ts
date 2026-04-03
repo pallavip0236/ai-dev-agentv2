@@ -1,14 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import {
-  mockCreateProject,
-  mockCreateRun,
-  mockDeleteProject,
-  mockGetProject,
-  mockListProjects,
-  mockListRuns,
-  mockSetRunStatus
-} from "@/lib/mock-backend";
 
 // Query Keys
 export const projectKeys = {
@@ -24,20 +15,22 @@ export const projectKeys = {
     [...projectKeys.all, "fileContent", projectId, path] as const
 };
 
+export type LogLine = {
+  id: string;
+  message: string;
+  timestamp: string;
+};
+
 // Projects
 export function useProjects() {
   return useQuery({
     queryKey: projectKeys.list(),
     queryFn: async () => {
-      try {
-        const res = await api.get("/api/v1/projects", {
-          params: { page: 1, limit: 50 }
-        });
-        if (res.status === 200) return res.data;
-        throw new Error("Failed to fetch projects");
-      } catch {
-        return mockListProjects({ page: 1, limit: 50 });
-      }
+      const res = await api.get("/api/v1/projects", {
+        params: { page: 1, limit: 50 }
+      });
+      if (res.status === 200) return res.data;
+      throw new Error("Failed to fetch projects");
     }
   });
 }
@@ -46,15 +39,9 @@ export function useProject(projectId: string) {
   return useQuery({
     queryKey: projectKeys.detail(projectId),
     queryFn: async () => {
-      try {
-        const res = await api.get(`/api/v1/projects/${projectId}`);
-        if (res.status === 200) return res.data;
-        throw new Error("Failed to fetch project");
-      } catch {
-        const p = mockGetProject(projectId);
-        if (!p) throw new Error("Failed to fetch project");
-        return p;
-      }
+      const res = await api.get(`/api/v1/projects/${projectId}`);
+      if (res.status === 200) return res.data;
+      throw new Error("Failed to fetch project");
     },
     enabled: !!projectId
   });
@@ -64,20 +51,10 @@ export function useCreateProject() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: { name: string }) =>
-      api
-        .post("/api/v1/projects", {
-          name: data.name,
-          description: `${data.name} project`
-        })
-        .catch(() => {
-          const project = mockCreateProject({ name: data.name });
-          // Mirror the shape used by the UI's id extraction.
-          return {
-            status: 201,
-            body: { id: project.id },
-            data: { id: project.id }
-          };
-        }),
+      api.post("/api/v1/projects", {
+        name: data.name,
+        description: `${data.name} project`
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.list() });
     }
@@ -87,11 +64,7 @@ export function useCreateProject() {
 export function useDeleteProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (projectId: string) =>
-      api.delete(`/api/v1/projects/${projectId}`).catch(() => {
-        mockDeleteProject(projectId);
-        return { status: 200 };
-      }),
+    mutationFn: (projectId: string) => api.delete(`/api/v1/projects/${projectId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.list() });
     }
@@ -130,15 +103,11 @@ export function useAgentRuns(projectId: string) {
   return useQuery({
     queryKey: projectKeys.runs(projectId),
     queryFn: async () => {
-      try {
-        const res = await api.get(`/api/v1/projects/${projectId}/runs`, {
-          params: { page: 1, limit: 50 }
-        });
-        if (res.status === 200) return res.data;
-        throw new Error("Failed to fetch runs");
-      } catch {
-        return mockListRuns(projectId);
-      }
+      const res = await api.get(`/api/v1/projects/${projectId}/runs`, {
+        params: { page: 1, limit: 50 }
+      });
+      if (res.status === 200) return res.data;
+      throw new Error("Failed to fetch runs");
     },
     enabled: !!projectId
   });
@@ -156,43 +125,28 @@ export function useAgentRun(projectId: string, runId: string) {
   });
 }
 
-export function useCreateAgentRun(projectId: string) {
+export function useStartPlanning(projectId: string) {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: { prompt: string }) =>
-      api.post(`/api/v1/projects/${projectId}/agent/planning/start`, data).catch(() => {
-        const run = mockCreateRun(projectId, { prompt: data.prompt });
-        return {
-          status: 201,
-          body: { id: run.id },
-          data: { id: run.id }
-        };
-      }),
-    onSuccess: (res, variables) => {
-      const anyRes = res as any;
-      const createdRunId =
-        anyRes?.body?.id ??
-        anyRes?.body?.runId ??
-        anyRes?.data?.id ??
-        anyRes?.data?.runId ??
-        anyRes?.data?.body?.id;
-
-      if (createdRunId) {
-        queryClient.setQueryData(projectKeys.runs(projectId), (old: any) => {
-          const oldRuns = Array.isArray(old?.data) ? old.data : [];
-          const already = oldRuns.some((r: any) => String(r?.id) === String(createdRunId));
-          if (already) return old;
-          const optimisticRun = {
-            id: String(createdRunId),
-            prompt: variables.prompt,
-            status: "RUNNING",
-            errorMessage: null,
-            createdAt: new Date().toISOString()
-          };
-          return { ...(old ?? {}), data: [optimisticRun, ...oldRuns] };
-        });
-      }
+  return useMutation<unknown, Error, { prompt: string }>({
+    mutationFn: (data) =>
+      api
+        .post(`/api/v1/projects/${projectId}/agent/planning/start`, data)
+        .then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
       queryClient.invalidateQueries({ queryKey: projectKeys.runs(projectId) });
+    }
+  });
+}
+
+export function useApprovePlanning(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<unknown, Error, { runId: string }>({
+    mutationFn: ({ runId }) =>
+      api.post(`/api/v1/projects/${projectId}/agent/planning/approve`, { runId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
     }
   });
 }
@@ -201,17 +155,33 @@ export function useCancelAgentRun(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (runId: string) =>
-      api
-        .post(`/api/v1/projects/${projectId}/runs/${runId}/cancel`)
-        .catch(() => {
-          mockSetRunStatus(projectId, runId, "CANCELLED");
-          return { status: 200 };
-        }),
+      api.post(`/api/v1/projects/${projectId}/runs/${runId}/cancel`),
     onSuccess: (_, runId) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.runs(projectId) });
       queryClient.invalidateQueries({
         queryKey: projectKeys.run(projectId, runId)
       });
+    }
+  });
+}
+
+export function useLinkJira(projectId?: string) {
+  const queryClient = useQueryClient();
+  return useMutation<unknown, Error, { projectId?: string; projectKey: string }>({
+    mutationFn: ({ projectId: projectIdArg, projectKey }) => {
+      const finalProjectId = projectIdArg ?? projectId;
+      if (!finalProjectId) {
+        return Promise.reject(new Error("Project ID is required for Jira linking"));
+      }
+      return api.post(`/api/v1/projects/${finalProjectId}/jira/link`, { projectKey });
+    },
+    onSuccess: (_, variables) => {
+      const finalProjectId = variables.projectId ?? projectId;
+      queryClient.invalidateQueries({ queryKey: projectKeys.list() });
+      if (finalProjectId) {
+        queryClient.invalidateQueries({ queryKey: ["projects", finalProjectId] });
+        queryClient.invalidateQueries({ queryKey: projectKeys.detail(finalProjectId) });
+      }
     }
   });
 }
