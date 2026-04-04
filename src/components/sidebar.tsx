@@ -29,8 +29,7 @@ const navItems = [
   { icon: Activity, label: "Activity" },
   // { icon: Link2, label: "Jira", to: "/dashboard/jira" },
 
-  // ✅ ADDED THIS
-  { icon: FileText, label: "Logs", to: "/dashboard/logs" },
+
 
   { icon: FileText, label: "Reports" },
   { icon: Settings, label: "Settings" },

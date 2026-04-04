@@ -1,14 +1,11 @@
 import {
-  Activity,
+  // Activity,
   ArrowLeft,
-  Bell,
   FolderKanban,
   Link2,
   LayoutDashboard,
   LogOut,
-  Mail,
   Settings,
-  User2,
   Users,
   Workflow
 } from "lucide-react";
@@ -19,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useCreateProject, useLinkJira } from "@/hooks/use-projects";
-import ModeToggle from "@/components/mode-toggle";
 import {
   agents,
   getAgentById,
@@ -28,6 +24,7 @@ import {
 } from "@/lib/data";
 import { useProjects } from "@/hooks/use-projects";
 import { useSignout } from "@/hooks/use-auth";
+import Header from "@/components/header";
 import { FolderPlus } from "lucide-react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 
@@ -36,7 +33,6 @@ type MenuKey =
   | "agents"
   | "projects"
   | "workflows"
-  | "logs"
   | "settings"
   | "jira";
 type View = "agents-overview" | "agent-detail" | "projects-overview" | "project-detail";
@@ -47,7 +43,6 @@ const navItems = [
   { key: "projects", label: "Projects", icon: FolderKanban },
   { key: "jira", label: "Open Jira", icon: Link2 },
   { key: "workflows", label: "Workflows", icon: Workflow },
-  { key: "logs", label: "Logs", icon: Activity },
   { key: "settings", label: "Settings", icon: Settings }
 ] as const;
 
@@ -118,10 +113,7 @@ export default function Dashboard() {
     //   setMenu("jira");
     //   return;
     // }
-    if (location.pathname === "/dashboard/logs") {
-      setMenu("logs");
-      return;
-    }
+
     setMenu("dashboard");
     setView("agents-overview");
   }, [location.pathname]);
@@ -130,12 +122,12 @@ export default function Dashboard() {
     filter === "all" ? agents : agents.filter((agent) => agent.id === filter);
 
   return (
-    <div className="min-h-screen bg-[#060c1b] text-slate-100">
-      <div className="flex min-h-screen">
-        <aside className="w-56 border-r border-white/10 bg-[#0a1228] flex flex-col">
-          <div className="h-14 border-b border-white/10 px-4 flex items-center font-semibold text-sm">
-            Ai-AgentDashboard
-          </div>
+<div className="min-h-screen bg-background text-foreground">
+        <div className="flex min-h-screen">
+<aside className="w-56 border-r border-white/10 bg-[#0a1228] flex flex-col">
+<div className="h-14 border-b border-white/10 px-4 flex items-center font-semibold text-sm text-white">
+  Ai-AgentDashboard
+</div>
           <nav className="p-3 space-y-1 flex-1">
             {navItems.map((item) => {
               const isActive = menu === item.key;
@@ -164,11 +156,7 @@ export default function Dashboard() {
                        return;
                      }
 
-                    if (item.key === "logs") {
-                      navigate("/dashboard/logs");
-                      setMenu("logs");
-                      return;
-                    }
+
 
                     // fallback for non-routed items
                     setMenu(item.key);
@@ -188,8 +176,8 @@ export default function Dashboard() {
           <div className="border-t border-white/10 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Administrator</p>
-                <p className="text-xs text-slate-400">admin@gmail.com</p>
+<p className="text-sm font-medium text-white">Administrator</p>
+<p className="text-xs text-slate-400">admin@gmail.com</p>
               </div>
             </div>
             <button
@@ -205,27 +193,12 @@ export default function Dashboard() {
         </aside>
 
         <main className="flex-1">
-          <header className="h-14 border-b border-white/10 px-6 flex items-center justify-between">
-            <p className="text-sm font-semibold">AI Agents Management Dashboard</p>
-            <div className="flex items-center gap-3">
-              <ModeToggle />
-              <button type="button" className="text-slate-400 hover:text-white">
-                <Mail className="w-4 h-4" />
-              </button>
-              <button type="button" className="text-slate-400 hover:text-white">
-                <Bell className="w-4 h-4" />
-              </button>
-              <div className="flex items-center gap-1.5 text-xs text-slate-300 border-l border-white/10 pl-3">
-                <User2 className="w-4 h-4" />
-                Admin
-              </div>
-            </div>
-          </header>
+            <Header />
 
           <section className="p-5 space-y-5">
             {(location.pathname.startsWith("/dashboard/projects/") ||
-              location.pathname === "/dashboard/jira" ||
-              location.pathname === "/dashboard/logs") ? (
+              location.pathname === "/dashboard/jira" 
+            ) ? (
               <Outlet />
             ) : (
               <>
@@ -240,8 +213,7 @@ export default function Dashboard() {
                   <select
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
-                    className="bg-[#111a33] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"
-                  >
+className="bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/40"                  >
                     <option value="all">All Agents</option>
                     {agents.map((agent) => (
                       <option key={agent.id} value={agent.id}>
@@ -328,8 +300,7 @@ export default function Dashboard() {
                       return (
                         <div
                           key={project.id}
-                          className="rounded-xl border border-white/10 bg-[#0f1730] p-4 text-left hover:border-blue-500/50 transition"
-                        >
+className="rounded-xl border border-border bg-card p-4 text-left hover:border-blue-500/50 transition"                        >
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className="text-lg font-semibold">{project.name}</p>
@@ -341,7 +312,7 @@ export default function Dashboard() {
                                 jiraLinked ? "bg-emerald-500 text-black" : "bg-slate-700 text-white"
                               }`}
                             >
-                              {jiraLinked ? `Jira: ${jiraKey}` : "Jira not linked"}
+                              {jiraLinked ? "Jira Connected" : "Jira not linked"}
                             </span>
                           </div>
 
@@ -373,17 +344,19 @@ export default function Dashboard() {
                               Chat
                             </button>
 
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setLinkProjectId(project.id);
-                                setLinkDialogOpen(true);
-                                setLinkProjectKey(jiraKey ?? "");
-                              }}
-                              className="px-3 py-1.5 rounded-md bg-blue-500 text-white text-xs font-medium hover:bg-blue-400"
-                            >
-                              {jiraLinked ? "Re-link Jira" : "Link Jira"}
-                            </button>
+{!jiraLinked && (
+  <button
+    type="button"
+    onClick={() => {
+      setLinkProjectId(project.id);
+      setLinkDialogOpen(true);
+      setLinkProjectKey("");
+    }}
+    className="px-3 py-1.5 rounded-md bg-blue-500 text-white text-xs font-medium hover:bg-blue-400"
+  >
+    Link Jira
+  </button>
+)}
                           </div>
                         </div>
                       );
@@ -462,7 +435,7 @@ export default function Dashboard() {
                     <DialogHeader>
                       <DialogTitle>Link Jira Project</DialogTitle>
                       <DialogDescription>
-                        Add Jira project key (e.g. SCRUM) for this project.
+                        Add Jira project key for this project.
                       </DialogDescription>
                     </DialogHeader>
 
@@ -531,8 +504,8 @@ export default function Dashboard() {
                   <Stat label="Closed" value={String(selectedProject.tickets.closed)} />
                   <Stat label="Progress" value={`${selectedProject.progress}%`} />
                 </div>
-                <div className="rounded-xl border border-white/10 bg-[#0f1730] p-4">
-                  <h3 className="font-semibold mb-3">Assigned Agents</h3>
+<div className="rounded-xl border border-border bg-card p-4">
+                    <h3 className="font-semibold mb-3">Assigned Agents</h3>
                   <div className="space-y-2">
                     {selectedProject.agents.map((agentId: string) => {
                       const agent = getAgentById(agentId);
@@ -583,12 +556,11 @@ export default function Dashboard() {
                   <Stat label="Active Tasks" value={String(selectedAgent.activeTasks)} />
                 </div>
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-white/10 bg-[#0f1730] p-4 h-64">
-                    <p className="text-sm font-semibold mb-3">Performance Over Time</p>
+<div className="rounded-xl border border-border bg-card p-4 h-64">
+                      <p className="text-sm font-semibold mb-3">Performance Over Time</p>
                     <div className="h-48 rounded-md border border-white/10 bg-gradient-to-b from-cyan-500/20 to-transparent" />
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-[#0f1730] p-4 h-64">
-                    <p className="text-sm font-semibold mb-3">Task Distribution</p>
+<div className="rounded-xl border border-border bg-card p-4 h-64">                    <p className="text-sm font-semibold mb-3">Task Distribution</p>
                     <div className="w-40 h-40 mx-auto mt-4 rounded-full border-[20px] border-emerald-400/80 border-r-amber-400 border-b-blue-500" />
                   </div>
                 </div>
@@ -605,8 +577,8 @@ export default function Dashboard() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-[#0f1730] p-3">
-      <p className="text-[11px] text-slate-400">{label}</p>
+<div className="rounded-lg border border-border bg-card p-3">
+        <p className="text-[11px] text-slate-400">{label}</p>
       <p className="text-lg font-semibold">{value}</p>
     </div>
   );

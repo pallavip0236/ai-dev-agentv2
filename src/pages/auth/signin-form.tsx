@@ -82,8 +82,8 @@ export default function SigninPage() {
   });
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#020817] px-8 py-14">
-      <div className="glass-card w-[420px] p-8 shadow-2xl border border-white/10 backdrop-blur-xl">
+<div className="min-h-screen flex items-center justify-center bg-[#060c1b] px-8 py-14">
+        <div className="glass-card w-[420px] p-8 shadow-2xl border border-white/10 backdrop-blur-xl">
         {/* ---------- TITLE ---------- */}
 
         <div className="text-center mb-6">

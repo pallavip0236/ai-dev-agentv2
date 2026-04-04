@@ -8,11 +8,11 @@ import AuthCallbackPage from "@/pages/auth/callback";
 import AuthLayout from "@/pages/auth/index";
 import SigninPage from "@/pages/auth/signin-form";
 import SignupPage from "@/pages/auth/signup";
-import VerifyPage from "@/pages/auth/verify";   // ✅ ADDED THIS LINE
+import VerifyPage from "@/pages/auth/verify";  
 
 import Dashboard from "@/pages/dashboard";
 import ProjectPage from "@/pages/dashboard/project/index";
-import Logs from "@/components/logs";
+
 // import Jira from "@/components/Jira";
 
 const queryClient = new QueryClient({
@@ -75,7 +75,6 @@ export default function App() {
             <Route path="projects" element={<Dashboard />} />
             <Route path="projects/:projectId" element={<ProjectPage />} />
             {/* <Route path="jira" element={<Jira />} /> */}
-            <Route path="logs" element={<Logs />} />
           </Route>
 
           {/* Redirect root */}

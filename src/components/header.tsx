@@ -1,21 +1,16 @@
 import { Mail, Bell, User } from "lucide-react";
-import ModeToggle from "./mode-toggle";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const Header = () => (
-  <header
-    className="h-14 flex items-center justify-between px-6 border-b transition-colors"
-    style={{
-      backgroundColor: "var(--background)", // use our dynamic background
-      borderColor: "rgba(255,255,255,0.06)", // optional, or use var(--border)
-      color: "var(--foreground)" // dynamic text color
-    }}
-  >
+  <header className="h-14 flex items-center justify-between px-6 border-b transition-colors">
+
     <h1 className="text-[15px] font-semibold">
       AI Project Automation Dashboard
     </h1>
 
     <div className="flex items-center gap-4">
-      <ModeToggle />
+
+      <ThemeToggle />
 
       <button
         type="button"
@@ -39,10 +34,14 @@ const Header = () => (
           <User size={14} className="text-black" />
         </div>
 
-        <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>
+        <span
+          className="text-[13px] font-medium"
+          style={{ color: "var(--foreground)" }}
+        >
           Admin
         </span>
       </div>
+
     </div>
   </header>
 );

@@ -1,155 +1,229 @@
-import { ArrowLeft, FolderGit2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router";
+"use client";
+
+import { useState } from "react";
 import { ChatPanel } from "@/components/agent/chat-panel";
 import { AgentLogsPanel } from "@/components/agent/agent-logs-panel";
-import { Button } from "@/components/ui/button";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup
-} from "@/components/ui/resizable";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useAgentRuns, useProject } from "@/hooks/use-projects";
 
-export default function ProjectPage() {
-  const { projectId } = useParams<{ projectId: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
+import type { Message } from "@/components/agent/chat-panel";
+import type {
+  AgentLog,
+  TimelineStatus,
+} from "@/components/agent/agent-logs-panel";
 
-  const { data: project, isLoading: projectLoading } = useProject(
-    projectId ?? ""
-  );
-  const { data: runsData } = useAgentRuns(projectId ?? "");
+/* ================= WORKFLOW TYPES ================= */
 
-  const runs = runsData?.data ?? [];
 
-  // active run from URL query param or latest run
-  const runIdFromUrl = searchParams.get("run");
-  const [activeRunId, setActiveRunId] = useState<string | null>(
-    runIdFromUrl ?? null
-  );
 
-  useEffect(() => {
-    if (!activeRunId && projectId) {
-      const storedLastProject = localStorage.getItem("lastProjectId");
-      const storedLastRun = localStorage.getItem("lastRunId");
+/* ================= COMPONENT ================= */
 
-      if (storedLastProject === projectId && storedLastRun) {
-        setActiveRunId(storedLastRun);
-        setSearchParams({ run: storedLastRun }, { replace: true });
-        return;
-      }
-    }
+export default function OpenJiraPage() {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: crypto.randomUUID(),
+      role: "agent",
+      content: "Hi 👋 Describe your project requirement.",
+    },
+  ]);
 
-    if (runs.length > 0 && !activeRunId) {
-      const latest = [...runs].sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )[0];
-      setActiveRunId(latest.id);
-      setSearchParams({ run: latest.id }, { replace: true });
-    }
-  }, [projectId, runs, activeRunId, setSearchParams]);
+  const [logs, setLogs] = useState<AgentLog[]>([]);
+  const [status, setStatus] = useState<TimelineStatus>("IDLE");
+  const [loading, setLoading] = useState(false);
+  const [currentSprint, setCurrentSprint] = useState(1);
 
-  useEffect(() => {
-    if (activeRunId && projectId) {
-      localStorage.setItem("lastProjectId", projectId);
-      localStorage.setItem("lastRunId", activeRunId);
-    }
-  }, [projectId, activeRunId]);
+  /* ================= SEND REQUIREMENT ================= */
 
-  const handleRunCreated = (runId: string) => {
-    setActiveRunId(runId);
-    setSearchParams({ run: runId }, { replace: true });
-    if (projectId) {
-      localStorage.setItem("lastProjectId", projectId);
-      localStorage.setItem("lastRunId", runId);
-    }
+  const handleSend = (input: string) => {
+    if (!input.trim()) return;
+
+    setMessages((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), role: "user", content: input },
+      {
+        id: crypto.randomUUID(),
+        role: "agent",
+        content: "Planning backlog and creating tickets...",
+        isLoading: true,
+      },
+    ]);
+
+
+    setStatus("PLANNING");
+    setLoading(true);
+
+    setLogs((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        status: "running",
+        message: "Planning agent started...",
+      },
+    ]);
+
+    setTimeout(() => {
+
+      setStatus("PLANNED");
+
+      setMessages((prev) => [
+        ...prev.filter((m) => !m.isLoading),
+        {
+          id: crypto.randomUUID(),
+          role: "agent",
+          content:
+            "Backlog created successfully. Do you approve the planning?",
+          action: { type: "approve_planning" },
+        },
+      ]);
+
+      setLogs((prev) =>
+        prev.map((log) =>
+          log.status === "running"
+            ? {
+                ...log,
+                status: "success",
+                message: "Backlog & tickets created.",
+              }
+            : log
+        )
+      );
+
+      setLoading(false);
+    }, 2000);
   };
 
-  const handleRunSelect = (runId: string) => {
-    setActiveRunId(runId);
-    setSearchParams({ run: runId }, { replace: true });
-    if (projectId) {
-      localStorage.setItem("lastProjectId", projectId);
-      localStorage.setItem("lastRunId", runId);
-    }
+  /* ================= APPROVE PLANNING ================= */
+
+  const handleApprovePlanning = () => {
+    startSprint();
   };
 
+  /* ================= START SPRINT ================= */
 
-  if (projectLoading) {
-    return (
-      <div className="min-h-full bg-background mesh-bg">
-        <div className="pt-14 h-full flex flex-col">
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
-            <Skeleton className="h-6 w-48" />
-          </div>
-          <Skeleton className="flex-1 m-4 rounded-xl" />
-        </div>
-      </div>
-    );
-  }
+  const startSprint = () => {
+    setStatus("CODED");
+    setLoading(true);
 
-  if (!project) {
-    return (
-      <div className="min-h-full bg-background mesh-bg flex items-center justify-center p-4">
-        <p className="text-muted-foreground">Project not found.</p>
-      </div>
-    );
-  }
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: "agent",
+        content: `Sprint ${currentSprint} started. Coding in progress...`,
+        isLoading: true,
+      },
+    ]);
+
+    setLogs((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        status: "running",
+        message: `Sprint ${currentSprint} coding started.`,
+      },
+    ]);
+
+    setTimeout(() => {
+      setStatus("CODED");
+
+      setMessages((prev) => [
+        ...prev.filter((m) => !m.isLoading),
+        {
+          id: crypto.randomUUID(),
+          role: "agent",
+          content: `Sprint ${currentSprint} completed. Please review.`,
+          action: { type: "review_sprint" },
+        },
+      ]);
+
+      setLogs((prev) =>
+        prev.map((log) =>
+          log.status === "running"
+            ? {
+                ...log,
+                status: "success",
+                message: `Sprint ${currentSprint} implemented successfully.`,
+              }
+            : log
+        )
+      );
+
+      setLoading(false);
+    }, 3000);
+  };
+
+  /* ================= APPROVE SPRINT ================= */
+
+  const handleApproveSprint = () => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: "agent",
+        content: `Sprint ${currentSprint} approved ✅ Creating next sprint...`,
+      },
+    ]);
+
+    setCurrentSprint((prev) => prev + 1);
+
+    setTimeout(() => {
+      startSprint();
+    }, 1500);
+  };
+
+  /* ================= REJECT SPRINT ================= */
+
+  const handleRejectSprint = (feedback: string) => {
+    setStatus("CODED");
+    setLoading(true);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        content: `Feedback: ${feedback}`,
+      },
+      {
+        id: crypto.randomUUID(),
+        role: "agent",
+        content: `Retrying Sprint ${currentSprint} based on feedback...`,
+        isLoading: true,
+      },
+    ]);
+
+    setTimeout(() => {
+      setStatus("CODED");
+
+      setMessages((prev) => [
+        ...prev.filter((m) => !m.isLoading),
+        {
+          id: crypto.randomUUID(),
+          role: "agent",
+          content: `Sprint ${currentSprint} updated. Approve or reject?`,
+          action: { type: "review_sprint" },
+        },
+      ]);
+
+      setLoading(false);
+    }, 3000);
+  };
+
+  /* ================= UI ================= */
 
   return (
-    <div className="min-h-full bg-background mesh-bg flex flex-col">
-
-      {/* project header bar */}
-      <div className="fixed top-14 inset-x-0 z-40 h-10 border-b border-border/50 bg-background/80 backdrop-blur-xl flex items-center px-4 gap-3">
-        <Button onClick={() => navigate("/dashboard/jira")}>
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Jira
-        </Button>
-        <Button
-          onClick={() => {
-            const params = new URLSearchParams();
-            params.set("projectId", projectId ?? "");
-            if (activeRunId) params.set("runId", activeRunId);
-            navigate(`/dashboard/jira?${params.toString()}`);
-          }}
-        >
-          Approve Planning
-        </Button>
-        <span className="text-border">/</span>
-        <div className="flex items-center gap-1.5">
-          <FolderGit2 className="w-3.5 h-3.5 text-cyan" />
-          <span className="text-xs font-medium text-foreground">
-            {project.name}
-          </span>
-        </div>
+    <div className="flex h-screen">
+      <div className="w-1/2 border-r border-white/10">
+        <ChatPanel
+          messages={messages}
+          onSend={handleSend}
+          onApprovePlanning={handleApprovePlanning}
+          onApproveSprint={handleApproveSprint}
+          onRejectSprint={handleRejectSprint}
+          loading={loading}
+        />
       </div>
 
-      {/* workspace — full height below both bars */}
-      <div className="pt-24 h-screen">
-        <ResizablePanelGroup
-          dir="horizontal"
-          className="h-full flex justify-between px-4 pb-4"
-        >
-          {/* left: chat panel */}
-          <ResizablePanel defaultSize={50}>
-            <ChatPanel
-              projectId={projectId ?? ""}
-              activeRunId={activeRunId}
-              onRunCreated={handleRunCreated}
-              onRunSelect={handleRunSelect}
-            />
-          </ResizablePanel>
-
-          <ResizableHandle withHandle className="bg-border/50 mx-2 rounded-full" />
-
-          {/* right: streaming agent logs */}
-          <ResizablePanel defaultSize={50}>
-            <AgentLogsPanel projectId={projectId ?? ""} runId={activeRunId} />
-          </ResizablePanel>
-        </ResizablePanelGroup>
+      <div className="w-1/2">
+        <AgentLogsPanel logs={logs} status={status} />
       </div>
     </div>
   );
