@@ -76,13 +76,11 @@ export default function ProjectPage() {
   const params = useParams();
   const projectId = params.projectId ?? "";
 
-  const {
-    data: projectResponse,
-    isLoading: isProjectLoading,
-    isError: isProjectError
-  } = useProject(projectId, {
-    refetchInterval: projectId ? 3000 : false
-  });
+const {
+  data: projectResponse,
+  isLoading: isProjectLoading,
+  isError: isProjectError
+} = useProject(projectId);
 
   const project = projectResponse?.data ?? projectResponse;
 
@@ -219,14 +217,23 @@ const handleApprovePlanning = () => {
   });
 };
 
-  const handleApproveSprint = () => {
-    if (!projectId) return;
-    approveSprintReview.mutate(undefined, {
-      onError: (error) => {
-        setMessages((prev) => [...prev, makeMessage(`Error: ${error.message}`)]);
-      }
-    });
-  };
+const handleApproveSprint = () => {
+  if (!projectId || project.status !== "SPRINT_REVIEW") return;
+
+  setLogs((prev) => [
+    ...prev,
+    mkLog("Sprint approved. Moving to next sprint...", "success")
+  ]);
+
+  approveSprintReview.mutate(undefined, {
+    onError: (error) => {
+      setMessages((prev) => [
+        ...prev,
+        makeMessage(`Error: ${error.message}`)
+      ]);
+    }
+  });
+};
 
   const handleStartCoding = () => {
     setMessages((prev) => prev.filter((m) => m.action?.type !== "start_coding"));
