@@ -22,7 +22,7 @@ export type Message = {
   content: string;
   isLoading?: boolean;
   action?: {
-    type: "approve_planning" | "start_coding" | "review_sprint";
+    type: "approve-planning" | "start-coding" | "review-sprint";
   };
 };
 
@@ -212,7 +212,7 @@ export function ChatPanel({
               {/* ================= ACTION BUTTONS ================= */}
 
               {/* Approve Planning */}
-              {msg.action?.type === "approve_planning" && (
+              {msg.action?.type === "approve-planning" && (
                 <Button
                   size="sm"
                   onClick={onApprovePlanning}
@@ -224,12 +224,12 @@ export function ChatPanel({
               )}
 
               {/* Start Coding Sprint */}
-              {msg.action?.type === "start_coding" && (
+              {msg.action?.type === "start-coding" && (
                 <StartCodingDialog projectId={projectId} onSuccess={onStartCoding} />
               )}
 
               {/* Review Sprint (Approve / Reject) */}
-              {msg.action?.type === "review_sprint" && (
+              {msg.action?.type === "review-sprint" && (
                 <div className="flex flex-col gap-2">
                   <div className="flex gap-2">
                     <Button

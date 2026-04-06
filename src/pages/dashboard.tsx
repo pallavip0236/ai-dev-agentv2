@@ -58,10 +58,12 @@ export default function Dashboard() {
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectDescription, setNewProjectDescription] = useState("");
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkProjectId, setLinkProjectId] = useState("");
   const [linkProjectKey, setLinkProjectKey] = useState("");
-
+const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
   const linkJira = useLinkJira();
@@ -122,7 +124,11 @@ export default function Dashboard() {
 
   const filteredAgents =
     filter === "all" ? agents : agents.filter((agent) => agent.id === filter);
+const storedUser = localStorage.getItem("user");
 
+const user = storedUser
+  ? JSON.parse(storedUser)
+  : { name: "Admin", email: "admin@gmail.com" };
   return (
 <div className="min-h-screen bg-background text-foreground">
         <div className="flex min-h-screen">
@@ -178,8 +184,8 @@ export default function Dashboard() {
           <div className="border-t border-white/10 p-4">
             <div className="flex items-center justify-between">
               <div>
-<p className="text-sm font-medium text-white">Administrator</p>
-<p className="text-xs text-slate-400">admin@gmail.com</p>
+<p className="text-sm font-medium text-white">{user.name}</p>
+<p className="text-xs text-slate-400">{user.email}</p>
               </div>
             </div>
             <button
@@ -359,28 +365,16 @@ className="rounded-xl border border-border bg-card p-4 text-left hover:border-bl
     Link Jira
   </button>
 )}
- <button
-    type="button"
-    onClick={() => {
-      const confirmDelete = window.confirm(
-        "Are you sure you want to delete this project?"
-      );
-      if (!confirmDelete) return;
-
-      deleteProject.mutate(project.id, {
-        onSuccess: () => {
-          toast.success("Project deleted successfully");
-        },
-        onError: (err: any) => {
-          toast.error(err?.message ?? "Failed to delete project");
-        }
-      });
-    }}
-    disabled={deleteProject.isPending}
-    className="px-3 py-1.5 rounded-md bg-red-600 text-white text-xs font-medium hover:bg-red-500 disabled:opacity-50"
-  >
-    {deleteProject.isPending ? "Deleting..." : "Delete"}
-  </button>
+<button
+  type="button"
+  onClick={() => {
+    setProjectToDelete(project.id);
+    setDeleteDialogOpen(true);
+  }}
+  className="px-3 py-1.5 rounded-md bg-red-600 text-white text-xs font-medium hover:bg-red-500"
+>
+  Delete
+</button>
                           </div>
                         </div>
                       );
@@ -390,10 +384,13 @@ className="rounded-xl border border-border bg-card p-4 text-left hover:border-bl
 
                 <Dialog
                   open={createDialogOpen}
-                  onOpenChange={(v) => {
-                    setCreateDialogOpen(v);
-                    if (!v) setNewProjectName("");
-                  }}
+onOpenChange={(v) => {
+  setCreateDialogOpen(v);
+  if (!v) {
+    setNewProjectName("");
+    setNewProjectDescription("");
+  }
+}}
                 >
 <DialogContent className="sm:max-w-md rounded-xl border border-slate-200 bg-white text-slate-900 shadow-xl">                  
 <DialogHeader className="space-y-1">
@@ -411,6 +408,12 @@ className="rounded-xl border border-border bg-card p-4 text-left hover:border-bl
   onChange={(e) => setNewProjectName(e.target.value)}
   className="border-slate-300 bg-white focus:ring-2 focus:ring-blue-500"
 />
+  <textarea
+    placeholder="Project description"
+    value={newProjectDescription}
+    onChange={(e) => setNewProjectDescription(e.target.value)}
+    className="w-full min-h-[80px] rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+  />
 
                       <div className="flex justify-end gap-2">
                         <Button onClick={() => setCreateDialogOpen(false)} variant="ghost">
@@ -423,7 +426,7 @@ className="rounded-xl border border-border bg-card p-4 text-left hover:border-bl
                             createProject.mutate(
                               {
                                 name: newProjectName.trim(),
-                                description: ""
+                                 description: newProjectDescription.trim()
                               },
                               {
                                 onSuccess: (response: any) => {
@@ -505,6 +508,58 @@ className="rounded-xl border border-border bg-card p-4 text-left hover:border-bl
                     </div>
                   </DialogContent>
                 </Dialog>
+                {/* ✅ DELETE DIALOG (PLACE IT HERE) */}
+<Dialog
+  open={deleteDialogOpen}
+  onOpenChange={(v) => {
+    setDeleteDialogOpen(v);
+    if (!v) setProjectToDelete(null);
+  }}
+>
+  <DialogContent className="sm:max-w-md rounded-xl border border-slate-200 bg-white text-slate-900 shadow-xl">
+    <DialogHeader>
+      <DialogTitle className="text-lg font-semibold text-red-600">
+        Delete Project
+      </DialogTitle>
+      <DialogDescription>
+        Are you sure you want to delete this project? This action cannot be undone.
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="flex justify-end gap-2 mt-4">
+      <Button
+        variant="ghost"
+        onClick={() => {
+          setDeleteDialogOpen(false);
+          setProjectToDelete(null);
+        }}
+      >
+        Cancel
+      </Button>
+
+      <Button
+        className="bg-red-600 hover:bg-red-500 text-white"
+        disabled={deleteProject.isPending}
+        onClick={() => {
+          if (!projectToDelete) return;
+
+          deleteProject.mutate(projectToDelete, {
+            onSuccess: () => {
+              toast.success("Project deleted successfully");
+              setDeleteDialogOpen(false);
+              setProjectToDelete(null);
+            },
+            onError: (err: any) => {
+              toast.error(err?.message ?? "Failed to delete project");
+            }
+          });
+        }}
+      >
+        {deleteProject.isPending ? "Deleting..." : "Delete"}
+      </Button>
+    </div>
+  </DialogContent>
+</Dialog>
               </div>
             )}
 

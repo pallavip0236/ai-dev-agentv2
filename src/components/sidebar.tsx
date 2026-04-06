@@ -37,13 +37,18 @@ const navItems = [
 
 const Sidebar = () => {
   const [activeItem, setActiveItem] = useState("Dashboard");
+const storedUser = localStorage.getItem("user");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+const user = storedUser
+  ? JSON.parse(storedUser)
+  : { name: "Admin", email: "admin@gmail.com" };
 
   const signout = useMutation({
     mutationFn: () => api.post("/api/v1/auth/signout", {}),
     onSuccess: async () => {
       localStorage.removeItem("auth");
+      localStorage.removeItem("user");
       queryClient.clear();
       queryClient.removeQueries({ queryKey: ["session"] });
       navigate("/auth/signin", { replace: true });
@@ -92,32 +97,35 @@ const Sidebar = () => {
             </button>
           );
         })}
-      </nav>
+</nav>
 
-      <div className="p-4 border-t border-white/10 space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-yellow-400 flex items-center justify-center text-xs font-bold text-black">
-            AD
-          </div>
-          <div>
-            <p className="text-[13px] font-semibold text-white">Admin</p>
-            <p className="text-[11px] text-gray-400">Administrator</p>
-          </div>
-        </div>
+<div className="p-4 border-t border-white/10 space-y-3">
 
-        <button
-          type="button"
-          onClick={() => signout.mutate()}
-          disabled={signout.isPending}
-          className="w-full flex items-center justify-center gap-2 mt-3 px-3 py-2 rounded-lg
-          bg-red-500/10 text-red-400 border border-red-500/20
-          hover:bg-red-500 hover:text-white hover:shadow-lg hover:shadow-red-500/30
-          transition-all duration-200 text-[13px] font-medium"
-        >
-          <LogOut size={16} />
-          Logout
-        </button>
-      </div>
+  <div className="flex items-center gap-3">
+    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-yellow-400 flex items-center justify-center text-xs font-bold text-black">
+      {user.name?.charAt(0).toUpperCase()}
+    </div>
+
+    <div>
+      <p className="text-[13px] font-semibold text-white">{user.name}</p>
+      <p className="text-[11px] text-gray-400">{user.email}</p>
+    </div>
+  </div>
+
+  <button
+    type="button"
+    onClick={() => signout.mutate()}
+    disabled={signout.isPending}
+    className="w-full flex items-center justify-center gap-2 mt-3 px-3 py-2 rounded-lg
+    bg-red-500/10 text-red-400 border border-red-500/20
+    hover:bg-red-500 hover:text-white hover:shadow-lg hover:shadow-red-500/30
+    transition-all duration-200 text-[13px] font-medium"
+  >
+    <LogOut size={16} />
+    Logout
+  </button>
+
+</div>
     </aside>
   );
 };

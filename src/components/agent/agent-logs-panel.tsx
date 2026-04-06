@@ -22,6 +22,8 @@ export type AgentLog = {
   id: number;
   status: "running" | "success" | "error";
   message: string;
+  timestamp: Date;
+  level: "info" | "success" | "error";
 };
 
 type AgentLogsPanelProps = {
@@ -144,7 +146,18 @@ export function AgentLogsPanel({ logs, status }: AgentLogsPanelProps) {
         ) : (
           <div className="flex flex-col gap-2 font-mono text-xs">
             {logs.map((log) => (
-              <div key={log.id} className="flex gap-3">
+              <div key={log.id} className="flex gap-3 leading-relaxed">
+                <span className="shrink-0 text-gray-400 tabular-nums">
+                  {log.timestamp.toLocaleTimeString("en-US", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                    hour12: false
+                  })}
+                </span>
+                <span className="shrink-0 text-gray-400 uppercase text-xs">
+                  [{log.level.toUpperCase()}]
+                </span>
                 <span
                   className={`
                     ${log.status === "success" && "text-green-400"}
