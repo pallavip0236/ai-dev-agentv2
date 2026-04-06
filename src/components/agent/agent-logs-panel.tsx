@@ -2,7 +2,14 @@
 
 import { Loader2, CheckCircle2, Terminal } from "lucide-react";
 
-export const TIMELINE = ["IDLE", "PLANNING", "PLANNED", "CODED"] as const;
+export const TIMELINE = [
+  "IDLE",
+  "PLANNING",
+  "PLANNED",
+  "CODED",
+  "SPRINT_REVIEW",
+  "FAILED"
+] as const;
 
 export type TimelineStatus = (typeof TIMELINE)[number];
 

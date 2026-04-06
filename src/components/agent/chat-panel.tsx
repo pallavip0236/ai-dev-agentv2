@@ -22,7 +22,7 @@ type ChatPanelProps = {
   onSend: (message: string) => void;
   onApprovePlanning: () => void;
   onApproveSprint: () => void;
-  onRejectSprint: (feedback: string) => void;
+  onRejectSprint: (issueKey: string, feedback: string) => void;
   loading: boolean;
 };
 
@@ -37,6 +37,7 @@ export function ChatPanel({
   loading,
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
+  const [issueKey, setIssueKey] = useState("");
   const [feedback, setFeedback] = useState("");
   const [showRejectBox, setShowRejectBox] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -53,8 +54,9 @@ export function ChatPanel({
   };
 
   const handleReject = () => {
-    if (!feedback.trim()) return;
-    onRejectSprint(feedback);
+    if (!issueKey.trim() || !feedback.trim()) return;
+    onRejectSprint(issueKey.trim().toUpperCase(), feedback.trim());
+    setIssueKey("");
     setFeedback("");
     setShowRejectBox(false);
   };
@@ -141,6 +143,13 @@ export function ChatPanel({
                   {/* Feedback box */}
                   {showRejectBox && (
                     <div className="flex flex-col gap-2 mt-2">
+                      <input
+                        type="text"
+                        placeholder="Issue key (e.g. SCRUM-5)"
+                        className="bg-[#111827] border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                        value={issueKey}
+                        onChange={(e) => setIssueKey(e.target.value)}
+                      />
                       <textarea
                         placeholder="Enter feedback..."
                         className="bg-[#111827] border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useCreateProject, useLinkJira } from "@/hooks/use-projects";
+import { useDeleteProject } from "@/hooks/use-projects";
 import {
   agents,
   getAgentById,
@@ -62,6 +63,7 @@ export default function Dashboard() {
   const [linkProjectKey, setLinkProjectKey] = useState("");
 
   const createProject = useCreateProject();
+  const deleteProject = useDeleteProject();
   const linkJira = useLinkJira();
 
   const { data: projectsData, isLoading: projectsLoading } = useProjects();
@@ -357,6 +359,28 @@ className="rounded-xl border border-border bg-card p-4 text-left hover:border-bl
     Link Jira
   </button>
 )}
+ <button
+    type="button"
+    onClick={() => {
+      const confirmDelete = window.confirm(
+        "Are you sure you want to delete this project?"
+      );
+      if (!confirmDelete) return;
+
+      deleteProject.mutate(project.id, {
+        onSuccess: () => {
+          toast.success("Project deleted successfully");
+        },
+        onError: (err: any) => {
+          toast.error(err?.message ?? "Failed to delete project");
+        }
+      });
+    }}
+    disabled={deleteProject.isPending}
+    className="px-3 py-1.5 rounded-md bg-red-600 text-white text-xs font-medium hover:bg-red-500 disabled:opacity-50"
+  >
+    {deleteProject.isPending ? "Deleting..." : "Delete"}
+  </button>
                           </div>
                         </div>
                       );
@@ -397,7 +421,10 @@ className="rounded-xl border border-border bg-card p-4 text-left hover:border-bl
                           onClick={() => {
                             if (!newProjectName.trim()) return;
                             createProject.mutate(
-                              { name: newProjectName.trim() },
+                              {
+                                name: newProjectName.trim(),
+                                description: ""
+                              },
                               {
                                 onSuccess: (response: any) => {
                                   toast.success("Project created");

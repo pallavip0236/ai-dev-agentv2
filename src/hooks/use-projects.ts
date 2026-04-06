@@ -35,7 +35,10 @@ export function useProjects() {
   });
 }
 
-export function useProject(projectId: string) {
+export function useProject(
+  projectId: string,
+  options?: { refetchInterval?: number | false }
+) {
   return useQuery({
     queryKey: projectKeys.detail(projectId),
     queryFn: async () => {
@@ -43,17 +46,18 @@ export function useProject(projectId: string) {
       if (res.status === 200) return res.data;
       throw new Error("Failed to fetch project");
     },
-    enabled: !!projectId
+    enabled: !!projectId,
+    refetchInterval: options?.refetchInterval
   });
 }
 
 export function useCreateProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name: string }) =>
+    mutationFn: (data: { name: string; description: string }) =>
       api.post("/api/v1/projects", {
         name: data.name,
-        description: `${data.name} project`
+        description: data.description
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.list() });
@@ -141,14 +145,40 @@ export function useStartPlanning(projectId: string) {
 
 export function useApprovePlanning(projectId: string) {
   const queryClient = useQueryClient();
-  return useMutation<unknown, Error, { runId: string }>({
-    mutationFn: ({ runId }) =>
-      api.post(`/api/v1/projects/${projectId}/agent/planning/approve`, { runId }),
+  return useMutation<unknown, Error, void>({
+    mutationFn: () =>
+      api.post(`/api/v1/projects/${projectId}/agent/planning/approve`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
       queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
     }
   });
+}
+
+export function useApproveSprintReview(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<unknown, Error, void>({
+    mutationFn: () =>
+      api.post(`/api/v1/projects/${projectId}/agent/sprint/approve`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+    }
+  });
+}
+
+export function useRejectSprintReview(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<unknown, Error, { issueKey: string; feedback: string }>(
+    {
+      mutationFn: (data) =>
+        api.post(`/api/v1/projects/${projectId}/agent/sprint/reject`, data),
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
+        queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+      }
+    }
+  );
 }
 
 export function useCancelAgentRun(projectId: string) {

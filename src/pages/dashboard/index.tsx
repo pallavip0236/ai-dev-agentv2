@@ -1,6 +1,6 @@
 import { useForm } from "@tanstack/react-form";
 import { formatDistanceToNow } from "date-fns";
-import { FolderGit2, Loader2, Plus, Trash2 } from "lucide-react";
+import { FolderGit2, Loader2, Plus} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
@@ -21,12 +21,15 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useCreateProject,
-  useDeleteProject,
   useProjects
 } from "@/hooks/use-projects";
 
 const createProjectSchema = z.object({
-  name: z.string().min(1, "Name is required").max(100, "Name is too long")
+  name: z.string().min(1, "Name is required").max(100, "Name is too long"),
+  description: z
+    .string()
+    .min(1, "Description is required")
+    .max(250, "Description is too long")
 });
 
 export default function DashboardPage() {
@@ -35,10 +38,10 @@ export default function DashboardPage() {
 
   const { data, isLoading } = useProjects();
   const createProject = useCreateProject();
-  const deleteProject = useDeleteProject();
+
 
   const form = useForm({
-    defaultValues: { name: "" },
+    defaultValues: { name: "", description: "" },
     validators: {
       onSubmit: ({ value }) => {
         const result = createProjectSchema.safeParse(value);
@@ -50,7 +53,11 @@ export default function DashboardPage() {
     onSubmit: async ({ value }) => {
       try {
         const projectName = value.name.trim();
-        const res = await createProject.mutateAsync({ name: projectName });
+        const projectDescription = value.description.trim();
+        const res = await createProject.mutateAsync({
+          name: projectName,
+          description: projectDescription
+        });
         const anyRes = res as any;
         const createdId =
           anyRes?.body?.id ??
@@ -101,15 +108,7 @@ export default function DashboardPage() {
     }
   });
 
-  const handleDelete = async (e: React.MouseEvent, projectId: string) => {
-    e.stopPropagation();
-    const res = await deleteProject.mutateAsync(projectId);
-    if (res.status === 200) {
-      toast.success("Project deleted");
-    } else {
-      toast.error("Failed to delete project");
-    }
-  };
+
 
   const projects = data?.data ?? [];
 
@@ -188,22 +187,17 @@ export default function DashboardPage() {
                   <div className="w-9 h-9 rounded-lg bg-cyan/10 border border-cyan/20 flex items-center justify-center flex-shrink-0">
                     <FolderGit2 className="w-4 h-4 text-cyan" />
                   </div>
-                  <Button
-                    onClick={(e) => handleDelete(e, project.id)}
-                    disabled={deleteProject.isPending}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-all"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
                 </div>
 
                 {/* name */}
                 <h3 className="font-medium text-foreground text-sm mb-1 truncate">
                   {project.name}
                 </h3>
-
-                {/* repo */}
-                {project.repoOwner && project.repoName ? (
+                {project.description ? (
+                  <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+                    {project.description}
+                  </p>
+                ) : project.repoOwner && project.repoName ? (
                   <p className="text-xs text-muted-foreground font-mono truncate mb-3">
                     {project.repoOwner}/{project.repoName}
                   </p>
@@ -240,7 +234,7 @@ export default function DashboardPage() {
               Create project
             </DialogTitle>
             <DialogDescription className="text-muted-foreground text-sm">
-              Give your project a name. You can connect a GitHub repo later.
+              Give your project a name and a short description. You can connect a GitHub repo later.
             </DialogDescription>
           </DialogHeader>
 
@@ -272,6 +266,35 @@ export default function DashboardPage() {
                       placeholder="my-awesome-app"
                       className="bg-input/50 border-border/50 focus:border-cyan/50 focus:ring-cyan/20"
                       autoFocus
+                    />
+                    {isInvalid && (
+                      <FieldError errors={field.state.meta.errors} />
+                    )}
+                  </Field>
+                );
+              }}
+            </form.Field>
+
+            <form.Field name="description">
+              {(field) => {
+                const isInvalid =
+                  field.state.meta.isTouched && !field.state.meta.isValid;
+                return (
+                  <Field data-invalid={isInvalid}>
+                    <FieldLabel
+                      htmlFor="project-description"
+                      className="text-sm text-muted-foreground"
+                    >
+                      Project description
+                    </FieldLabel>
+                    <Input
+                      id="project-description"
+                      name={field.name}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      placeholder="A short summary of your project"
+                      className="bg-input/50 border-border/50 focus:border-cyan/50 focus:ring-cyan/20"
                     />
                     {isInvalid && (
                       <FieldError errors={field.state.meta.errors} />
