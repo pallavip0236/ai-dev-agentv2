@@ -73,10 +73,9 @@ function StartCodingDialog({
           Start Coding Sprint
         </Button>
       </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Start Coding Sprint</DialogTitle>
-          <DialogDescription>
+<DialogContent className="max-w-lg rounded-xl border border-slate-200 bg-white shadow-xl">        <DialogHeader>
+          <DialogTitle className="text-lg font-semibold text-slate-900">Start Coding Sprint</DialogTitle>
+          <DialogDescription className="text-sm text-slate-500">
             Select a future sprint from your Jira board. The coding agent will implement all tickets in it.
           </DialogDescription>
         </DialogHeader>
@@ -90,26 +89,37 @@ function StartCodingDialog({
               No future sprints found. Create one in Jira first.
             </p>
           ) : (
-            sprints.map((sprint) => (
-              <button
-                key={sprint.id}
-                type="button"
-                onClick={() => setSelectedSprintId(sprint.id ?? null)}
-                className={`flex flex-col gap-0.5 rounded-lg border px-4 py-3 text-left transition-colors hover:bg-white/5 ${
-                  selectedSprintId === sprint.id ? "border-cyan-500 bg-cyan-500/10" : "border-white/10"
-                }`}
-              >
-                <span className="text-sm font-medium text-white">{sprint.name}</span>
-                {sprint.goal && (
-                  <span className="text-xs text-gray-400">{sprint.goal}</span>
-                )}
-              </button>
-            ))
+           sprints.map((sprint) => (
+  <button
+    key={sprint.id}
+    type="button"
+    onClick={() => setSelectedSprintId(sprint.id ?? null)}
+    className={`flex flex-col gap-1 rounded-lg border px-4 py-3 text-left transition-all
+    ${
+      selectedSprintId === sprint.id
+        ? "border-blue-500 bg-blue-50 text-slate-900"
+        : "border-slate-200 bg-white hover:bg-slate-50"
+    }`}
+  >
+    <span className="text-sm font-semibold text-slate-900">
+      {sprint.name}
+    </span>
+
+    {sprint.goal && (
+      <span className="text-xs text-slate-500">
+        {sprint.goal}
+      </span>
+    )}
+  </button>
+))
           )}
         </div>
         <DialogFooter>
-          <Button onClick={handleStart} disabled={!selectedSprintId || isPending}>
-            {isPending ? (
+<Button
+  onClick={handleStart}
+  disabled={!selectedSprintId || isPending}
+  className="bg-blue-600 hover:bg-blue-700 text-white"
+>            {isPending ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
               "Start Coding"
@@ -159,16 +169,15 @@ export function ChatPanel({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0b1120] text-white">
-      {/* ================= HEADER ================= */}
+<div className="flex flex-col h-screen bg-[#0b1120] text-white">    {/* ================= HEADER ================= */}
       <div className="p-4 border-b border-white/10 flex items-center gap-2">
         <Bot className="text-blue-400" size={20} />
         <h2 className="font-semibold text-lg">Jira AI Agent</h2>
       </div>
 
       {/* ================= MESSAGES ================= */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg) => (
+<div className="flex-1 overflow-y-auto p-4 space-y-4">
+       {messages.map((msg) => (
           <div
             key={msg.id}
             className={`flex ${
@@ -278,8 +287,7 @@ export function ChatPanel({
       </div>
 
       {/* ================= INPUT ================= */}
-      <div className="p-4 border-t border-white/10 flex gap-2">
-        <input
+<div className="p-4 border-t border-white/10 flex gap-2 bg-[#0b1120]">        <input
           type="text"
           placeholder="Describe your requirement..."
           className="flex-1 bg-[#111827] border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

@@ -53,19 +53,28 @@ export default function OtpForm({ email, mode = "signin", name = "", onSuccess, 
                 otp: value.otp
               });
 
-        if (res.status === 200 || res.status === 201) {
-          toast.success(mode === "signup" ? "Account created successfully" : "Login successful");
+if (res.status === 200 || res.status === 201) {
+  toast.success(mode === "signup" ? "Account created successfully" : "Login successful");
 
-          // Save login state
-          localStorage.setItem("auth", "true");
+  // Save login state
+  localStorage.setItem("auth", "true");
 
-          // Redirect to dashboard
-          if (onSuccess) {
-            onSuccess();
-          } else {
-            navigate("/dashboard");
-          }
-        } else {
+  // ✅ Save user info for header
+  localStorage.setItem(
+    "user",
+    JSON.stringify({
+      name: name || email.split("@")[0],
+      email: email
+    })
+  );
+
+  // Redirect to dashboard
+  if (onSuccess) {
+    onSuccess();
+  } else {
+    navigate("/dashboard");
+  }
+}else {
           toast.error("Invalid or expired OTP");
         }
       } catch {

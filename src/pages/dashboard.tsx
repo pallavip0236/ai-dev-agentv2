@@ -395,22 +395,22 @@ className="rounded-xl border border-border bg-card p-4 text-left hover:border-bl
                     if (!v) setNewProjectName("");
                   }}
                 >
-                  <DialogContent className="glass border-glass-border sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Create new project</DialogTitle>
-                      <DialogDescription>
+<DialogContent className="sm:max-w-md rounded-xl border border-slate-200 bg-white text-slate-900 shadow-xl">                  
+<DialogHeader className="space-y-1">
+<DialogTitle className="text-lg font-semibold text-slate-900">
+  Create new project
+</DialogTitle>                      <DialogDescription>
                         Provide a project name and create it.
                       </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-4 mt-2">
-                      <Input
-                        placeholder="Project name"
-                        value={newProjectName}
-                        onChange={(e) => setNewProjectName(e.target.value)}
-                        className="bg-input/50 border-border/50"
-                        autoFocus
-                      />
+<Input
+  placeholder="Project name"
+  value={newProjectName}
+  onChange={(e) => setNewProjectName(e.target.value)}
+  className="border-slate-300 bg-white focus:ring-2 focus:ring-blue-500"
+/>
 
                       <div className="flex justify-end gap-2">
                         <Button onClick={() => setCreateDialogOpen(false)} variant="ghost">
@@ -458,10 +458,10 @@ className="rounded-xl border border-border bg-card p-4 text-left hover:border-bl
                     }
                   }}
                 >
-                  <DialogContent className="glass border-glass-border sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Link Jira Project</DialogTitle>
-                      <DialogDescription>
+<DialogContent className="sm:max-w-md rounded-xl border border-slate-200 bg-white text-slate-900 shadow-xl">                   
+<DialogHeader className="space-y-1">
+                        <DialogTitle className="text-lg font-semibold text-slate-900">Link Jira Project</DialogTitle>
+                      <DialogDescription className="text-sm text-slate-500">
                         Add Jira project key for this project.
                       </DialogDescription>
                     </DialogHeader>
