@@ -64,7 +64,7 @@ function getInitialMessages(project: any): Message[] {
 }
 
 function mapStatusToTimeline(status: string): TimelineStatus {
-  if (status === "CODING") return "CODED";
+  if (status === "CODING") return "CODING";
   if (status === "SPRINT_REVIEW") return "SPRINT_REVIEW";
   if (status === "FAILED") return "FAILED";
   if (status === "PLANNED") return "PLANNED";
@@ -123,7 +123,6 @@ const isBusy =
         ...prev.filter((msg) => !msg.isLoading),
         makeMessage("Planning backlog and creating tickets...", { isLoading: true })
       ]);
-      setLogs((prev) => [...prev, mkLog("Planning started...")]);
       return;
     }
 
@@ -185,7 +184,7 @@ const isBusy =
       { id: crypto.randomUUID(), role: "user", content: input },
       makeMessage("Planning backlog and creating tickets...", { isLoading: true })
     ]);
-    setLogs((prev) => [...prev, mkLog("Planning started...")]);
+    setLogs((prev) => [...prev, mkLog("Planning started.", "running")]);
 
     startPlanning.mutate({ prompt: input }, {
       onError: (error) => {
@@ -197,14 +196,28 @@ const isBusy =
     });
   };
 
-  const handleApprovePlanning = () => {
-    if (!projectId) return;
-    approvePlanning.mutate(undefined, {
-      onError: (error) => {
-        setMessages((prev) => [...prev, makeMessage(`Error: ${error.message}`)]);
-      }
-    });
-  };
+const handleApprovePlanning = () => {
+  if (!projectId) return;
+
+  approvePlanning.mutate(undefined, {
+    onSuccess: () => {
+      setMessages((prev) => [
+        ...prev.filter((m) => m.action?.type !== "approve_planning"),
+        makeMessage("Planning approved! Choose a sprint and start coding.", {
+          action: { type: "start_coding" }
+        })
+      ]);
+
+      setLogs((prev) => [
+        ...prev,
+        mkLog("Planning approved. Ready to start coding.", "success")
+      ]);
+    },
+    onError: (error) => {
+      setMessages((prev) => [...prev, makeMessage(`Error: ${error.message}`)]);
+    }
+  });
+};
 
   const handleApproveSprint = () => {
     if (!projectId) return;
@@ -213,6 +226,10 @@ const isBusy =
         setMessages((prev) => [...prev, makeMessage(`Error: ${error.message}`)]);
       }
     });
+  };
+
+  const handleStartCoding = () => {
+    setMessages((prev) => prev.filter((m) => m.action?.type !== "start_coding"));
   };
 
   const handleRejectSprint = (issueKey: string, feedback: string) => {
@@ -274,9 +291,11 @@ const isBusy =
       <div className="flex flex-1 overflow-hidden">
         <div className="flex w-1/2 flex-col overflow-hidden border-r">
           <ChatPanel
+            projectId={project.id}
             messages={messages}
             onSend={handleSend}
             onApprovePlanning={handleApprovePlanning}
+            onStartCoding={handleStartCoding}
             onApproveSprint={handleApproveSprint}
             onRejectSprint={handleRejectSprint}
             loading={isBusy}

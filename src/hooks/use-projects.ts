@@ -155,6 +155,20 @@ export function useApprovePlanning(projectId: string) {
   });
 }
 
+export function useStartCoding(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<unknown, Error, { sprintId: number }>(
+    {
+      mutationFn: (data) =>
+        api.post(`/api/v1/projects/${projectId}/agent/coding/start`, data),
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
+        queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+      }
+    }
+  );
+}
+
 export function useApproveSprintReview(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation<unknown, Error, void>({

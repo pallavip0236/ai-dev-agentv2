@@ -3,6 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import { Send, Bot, Loader2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from "@/components/ui/dialog";
+import { useFutureSprints } from "@/hooks/use-jira";
+import { useStartCoding } from "@/hooks/use-projects";
 
 
 export type Message = {
@@ -11,27 +22,113 @@ export type Message = {
   content: string;
   isLoading?: boolean;
   action?: {
-    type: "approve_planning" | "review_sprint";
+    type: "approve_planning" | "start_coding" | "review_sprint";
   };
 };
 
 /* ================= PROPS ================= */
 
 type ChatPanelProps = {
+  projectId: string;
   messages: Message[];
   onSend: (message: string) => void;
   onApprovePlanning: () => void;
+  onStartCoding: () => void;
   onApproveSprint: () => void;
   onRejectSprint: (issueKey: string, feedback: string) => void;
   loading: boolean;
 };
 
+function StartCodingDialog({
+  projectId,
+  onSuccess
+}: {
+  projectId: string;
+  onSuccess: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [selectedSprintId, setSelectedSprintId] = useState<number | null>(null);
+  const { data: sprints, isLoading: sprintsLoading } = useFutureSprints(projectId);
+  const { mutate: startCoding, isPending } = useStartCoding(projectId);
+
+  const handleStart = () => {
+    if (!selectedSprintId) return;
+    startCoding(
+      { sprintId: selectedSprintId },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          setSelectedSprintId(null);
+          onSuccess();
+        }
+      }
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" className="self-start bg-cyan-600 hover:bg-cyan-700 text-white">
+          <Check size={14} className="mr-1" />
+          Start Coding Sprint
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Start Coding Sprint</DialogTitle>
+          <DialogDescription>
+            Select a future sprint from your Jira board. The coding agent will implement all tickets in it.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-2">
+          {sprintsLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="size-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : !sprints || sprints.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No future sprints found. Create one in Jira first.
+            </p>
+          ) : (
+            sprints.map((sprint) => (
+              <button
+                key={sprint.id}
+                type="button"
+                onClick={() => setSelectedSprintId(sprint.id ?? null)}
+                className={`flex flex-col gap-0.5 rounded-lg border px-4 py-3 text-left transition-colors hover:bg-white/5 ${
+                  selectedSprintId === sprint.id ? "border-cyan-500 bg-cyan-500/10" : "border-white/10"
+                }`}
+              >
+                <span className="text-sm font-medium text-white">{sprint.name}</span>
+                {sprint.goal && (
+                  <span className="text-xs text-gray-400">{sprint.goal}</span>
+                )}
+              </button>
+            ))
+          )}
+        </div>
+        <DialogFooter>
+          <Button onClick={handleStart} disabled={!selectedSprintId || isPending}>
+            {isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              "Start Coding"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* ================= COMPONENT ================= */
 
 export function ChatPanel({
+  projectId,
   messages,
   onSend,
   onApprovePlanning,
+  onStartCoding,
   onApproveSprint,
   onRejectSprint,
   loading,
@@ -115,6 +212,11 @@ export function ChatPanel({
                   <Check size={14} className="mr-1" />
                   Approve Planning
                 </Button>
+              )}
+
+              {/* Start Coding Sprint */}
+              {msg.action?.type === "start_coding" && (
+                <StartCodingDialog projectId={projectId} onSuccess={onStartCoding} />
               )}
 
               {/* Review Sprint (Approve / Reject) */}
