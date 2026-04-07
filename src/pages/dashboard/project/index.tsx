@@ -112,11 +112,20 @@ export default function ProjectPage() {
   const params = useParams();
   const projectId = params.projectId ?? "";
 
-  const {
-    data: projectResponse,
-    isLoading: isProjectLoading,
-    isError: isProjectError,
-  } = useProject(projectId);
+const {
+  data: projectResponse,
+  isLoading: isProjectLoading,
+  isError: isProjectError,
+} = useProject(projectId, {
+  refetchInterval: (query) => {
+    const data = query.state.data;
+    if (!data) return false;
+
+    return data.status === "PLANNING" || data.status === "CODING"
+      ? 3000
+      : false;
+  },
+});
 
   const project = projectResponse?.data ?? projectResponse;
 
@@ -169,6 +178,25 @@ export default function ProjectPage() {
     }
 
     if (previous === "PLANNING" && project.status === "PLANNED") {
+      setMessages((prev) => [
+        ...prev.filter((msg) => !msg.isLoading),
+        makeMessage(
+          "Planning complete! Your epics and stories are in the Jira backlog. Approve below to confirm.",
+          { action: { type: "approve-planning" } }
+        ),
+      ]);
+
+      setLogs((prev) => [
+        ...prev,
+        mkLog(
+          "Planning complete. Jira tickets created in backlog.",
+          "success"
+        ),
+      ]);
+      return;
+    }
+
+    if (previous === "IDLE" && project.status === "PLANNED") {
       setMessages((prev) => [
         ...prev.filter((msg) => !msg.isLoading),
         makeMessage(
@@ -460,6 +488,7 @@ export default function ProjectPage() {
         <div className="flex w-1/2 flex-col overflow-hidden border-r">
           <ChatPanel
             projectId={project.id}
+            projectStatus={project.status}
             messages={messages}
             onSend={handleSend}
             onApprovePlanning={handleApprovePlanning}

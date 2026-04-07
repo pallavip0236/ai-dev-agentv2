@@ -30,6 +30,7 @@ export type Message = {
 
 type ChatPanelProps = {
   projectId: string;
+  projectStatus: string;
   messages: Message[];
   onSend: (message: string) => void;
   onApprovePlanning: () => void;
@@ -135,6 +136,7 @@ function StartCodingDialog({
 
 export function ChatPanel({
   projectId,
+   projectStatus,
   messages,
   onSend,
   onApprovePlanning,
@@ -212,8 +214,7 @@ export function ChatPanel({
               {/* ================= ACTION BUTTONS ================= */}
 
               {/* Approve Planning */}
-              {msg.action?.type === "approve-planning" && (
-                <Button
+{msg.action?.type === "approve-planning" && projectStatus === "PLANNED" && (   <Button
                   size="sm"
                   onClick={onApprovePlanning}
                   className="self-start bg-green-600 hover:bg-green-700 text-white"
