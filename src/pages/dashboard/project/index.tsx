@@ -8,7 +8,6 @@ import { ChatPanel } from "@/components/agent/chat-panel";
 import { AgentLogsPanel } from "@/components/agent/agent-logs-panel";
 
 import type { Message } from "@/components/agent/chat-panel";
-import type { AgentLog, TimelineStatus } from "@/components/agent/agent-logs-panel";
 
 import {
   useApprovePlanning,
@@ -17,6 +16,52 @@ import {
   useRejectSprintReview,
   useStartPlanning,
 } from "@/hooks/use-projects";
+
+type TimelineStatus =
+  | "IDLE"
+  | "PLANNING"
+  | "PLANNED"
+  | "CODING"
+  | "SPRINT_REVIEW"
+  | "FAILED";
+
+type AgentLog = {
+  id: number;
+  status: "running" | "success" | "error";
+  message: string;
+  timestamp: Date;
+  level: "info" | "success" | "error";
+};
+
+const planningApprovalStorageKey = (projectId: string) =>
+  `project:${projectId}:planningApprovalPending`;
+
+const projectRanStorageKey = (projectId: string) =>
+  `project:${projectId}:hasRun`;
+
+function isPlanningApprovalPending(projectId: string) {
+  if (typeof window === "undefined") return false;
+  return window.sessionStorage.getItem(planningApprovalStorageKey(projectId)) === "true";
+}
+
+function setPlanningApprovalPending(projectId: string, pending: boolean) {
+  if (typeof window === "undefined") return;
+  if (pending) {
+    window.sessionStorage.setItem(planningApprovalStorageKey(projectId), "true");
+  } else {
+    window.sessionStorage.removeItem(planningApprovalStorageKey(projectId));
+  }
+}
+
+function hasProjectRun(projectId: string) {
+  if (typeof window === "undefined") return false;
+  return window.sessionStorage.getItem(projectRanStorageKey(projectId)) === "true";
+}
+
+function setProjectRan(projectId: string) {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(projectRanStorageKey(projectId), "true");
+}
 
 /* ------------------------------ Helpers ------------------------------ */
 
@@ -34,7 +79,7 @@ function mkLog(
   level: AgentLog["level"] = "info"
 ): AgentLog {
   return {
-    id: Date.now(),
+    id: Date.now() + Math.floor(Math.random() * 1000),
     status:
       level === "error"
         ? "error"
@@ -47,7 +92,11 @@ function mkLog(
   };
 }
 
-function getInitialMessages(project: any): Message[] {
+function getInitialMessages(
+  project: any,
+  needsPlanningApproval: boolean,
+  isCompletedProject: boolean
+): Message[] {
   switch (project?.status) {
     case "PLANNING":
       return [
@@ -57,12 +106,19 @@ function getInitialMessages(project: any): Message[] {
       ];
 
     case "PLANNED":
-      return [
-        makeMessage(
-          "Planning approved! Review your tickets in Jira, create a sprint, then come back to start coding.",
-          { action: { type: "start-coding" } }
-        ),
-      ];
+      return needsPlanningApproval
+        ? [
+            makeMessage(
+              "Planning complete! Your epics and stories are in the Jira backlog. Approve below to confirm.",
+              { action: { type: "approve-planning" } }
+            ),
+          ]
+        : [
+            makeMessage(
+              "Planning approved! Choose a sprint and start coding.",
+              { action: { type: "start-coding" } }
+            ),
+          ];
 
     case "SPRINT_REVIEW":
       return [
@@ -81,10 +137,23 @@ function getInitialMessages(project: any): Message[] {
 
     case "FAILED":
       return [
-        makeMessage(
-          "Something went wrong. Check the logs for details."
-        ),
+        makeMessage("Something went wrong. Check the logs for details."),
       ];
+
+    case "IDLE":
+      return isCompletedProject
+        ? [
+            makeMessage(
+              "All done! The backlog is empty and all tickets have been implemented."
+            ),
+          ]
+        : [
+            makeMessage(
+              project?.name
+                ? `Project "${project.name}" is ready. Describe what you want to build.`
+                : "Hi 👋 Describe your project requirement."
+            ),
+          ];
 
     default:
       return [
@@ -112,20 +181,20 @@ export default function ProjectPage() {
   const params = useParams();
   const projectId = params.projectId ?? "";
 
-const {
-  data: projectResponse,
-  isLoading: isProjectLoading,
-  isError: isProjectError,
-} = useProject(projectId, {
-  refetchInterval: (query) => {
-    const data = query.state.data;
-    if (!data) return false;
+  const {
+    data: projectResponse,
+    isLoading: isProjectLoading,
+    isError: isProjectError,
+  } = useProject(projectId, {
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data) return false;
 
-    return data.status === "PLANNING" || data.status === "CODING"
-      ? 3000
-      : false;
-  },
-});
+      return data.status === "PLANNING" || data.status === "CODING"
+        ? 1000
+        : false;
+    },
+  });
 
   const project = projectResponse?.data ?? projectResponse;
 
@@ -154,9 +223,70 @@ const {
     initialized.current = true;
     prevStatus.current = project.status;
 
-    setMessages(getInitialMessages(project));
+    if (project.status === "PLANNING") {
+      setPlanningApprovalPending(projectId, true);
+      setProjectRan(projectId);
+    }
+
+    if (project.status === "CODING" || project.status === "SPRINT_REVIEW") {
+      setProjectRan(projectId);
+    }
+
+    const needsPlanningApproval =
+      project.status === "PLANNED" && isPlanningApprovalPending(projectId);
+
+    const isCompletedProject =
+      project.status === "IDLE" && hasProjectRun(projectId);
+
+    setMessages(
+      getInitialMessages(project, needsPlanningApproval, isCompletedProject)
+    );
     setLogs([]);
-  }, [project]);
+  }, [project, projectId]);
+
+  /* -------------------- Reconcile UI Without Refresh -------------------- */
+
+  useEffect(() => {
+    if (!project || !initialized.current) return;
+
+    if (
+      project.status === "PLANNED" &&
+      isPlanningApprovalPending(projectId)
+    ) {
+      setMessages((prev) => {
+        const alreadyExists = prev.some(
+          (msg) => msg.action?.type === "approve-planning"
+        );
+        if (alreadyExists) return prev;
+
+        return [
+          ...prev.filter((msg) => !msg.isLoading),
+          makeMessage(
+            "Planning complete! Your epics and stories are in the Jira backlog. Approve below to confirm.",
+            { action: { type: "approve-planning" } }
+          ),
+        ];
+      });
+    }
+
+    if (project.status === "IDLE" && hasProjectRun(projectId)) {
+      setMessages((prev) => {
+        const alreadyExists = prev.some(
+          (msg) =>
+            msg.content ===
+            "All done! The backlog is empty and all tickets have been implemented."
+        );
+        if (alreadyExists) return prev;
+
+        return [
+          ...prev.filter((msg) => !msg.isLoading),
+          makeMessage(
+            "All done! The backlog is empty and all tickets have been implemented."
+          ),
+        ];
+      });
+    }
+  }, [project?.status, projectId]);
 
   /* -------------------- Status Transitions -------------------- */
 
@@ -168,6 +298,9 @@ const {
     prevStatus.current = project.status;
 
     if (previous === "IDLE" && project.status === "PLANNING") {
+      setPlanningApprovalPending(projectId, true);
+      setProjectRan(projectId);
+
       setMessages((prev) => [
         ...prev.filter((msg) => !msg.isLoading),
         makeMessage("Planning backlog and creating tickets...", {
@@ -178,6 +311,9 @@ const {
     }
 
     if (previous === "PLANNING" && project.status === "PLANNED") {
+      setPlanningApprovalPending(projectId, true);
+      setProjectRan(projectId);
+
       setMessages((prev) => [
         ...prev.filter((msg) => !msg.isLoading),
         makeMessage(
@@ -188,50 +324,28 @@ const {
 
       setLogs((prev) => [
         ...prev,
-        mkLog(
-          "Planning complete. Jira tickets created in backlog.",
-          "success"
-        ),
-      ]);
-      return;
-    }
-
-    if (previous === "IDLE" && project.status === "PLANNED") {
-      setMessages((prev) => [
-        ...prev.filter((msg) => !msg.isLoading),
-        makeMessage(
-          "Planning complete! Your epics and stories are in the Jira backlog. Approve below to confirm.",
-          { action: { type: "approve-planning" } }
-        ),
-      ]);
-
-      setLogs((prev) => [
-        ...prev,
-        mkLog(
-          "Planning complete. Jira tickets created in backlog.",
-          "success"
-        ),
+        mkLog("Planning complete. Jira tickets created in backlog.", "success"),
       ]);
       return;
     }
 
     if (previous === "PLANNED" && project.status === "CODING") {
+      setProjectRan(projectId);
+
       setMessages((prev) => [
         ...prev.filter((msg) => !msg.isLoading),
-        makeMessage(
-          "Coding agent is starting on your sprint...",
-          { isLoading: true }
-        ),
+        makeMessage("Coding agent is starting on your sprint...", {
+          isLoading: true,
+        }),
       ]);
 
-      setLogs((prev) => [
-        ...prev,
-        mkLog("Coding agent started.", "info"),
-      ]);
+      setLogs((prev) => [...prev, mkLog("Coding agent started.", "info")]);
       return;
     }
 
     if (previous === "CODING" && project.status === "SPRINT_REVIEW") {
+      setProjectRan(projectId);
+
       setMessages((prev) => [
         ...prev.filter((msg) => !msg.isLoading),
         makeMessage(
@@ -248,11 +362,11 @@ const {
     }
 
     if (previous === "SPRINT_REVIEW" && project.status === "CODING") {
+      setProjectRan(projectId);
+
       setMessages((prev) => [
         ...prev.filter(
-          (msg) =>
-            !msg.isLoading &&
-            msg.action?.type !== "review-sprint"
+          (msg) => !msg.isLoading && msg.action?.type !== "review-sprint"
         ),
         makeMessage(
           "Review submitted. Agent is processing the next sprint...",
@@ -262,10 +376,24 @@ const {
 
       setLogs((prev) => [
         ...prev,
-        mkLog(
-          "Sprint review actioned. Coding agent restarted.",
-          "info"
+        mkLog("Sprint review actioned. Coding agent restarted.", "info"),
+      ]);
+      return;
+    }
+
+    if (previous === "SPRINT_REVIEW" && project.status === "PLANNED") {
+      setMessages((prev) => [
+        ...prev.filter(
+          (msg) => !msg.isLoading && msg.action?.type !== "review-sprint"
         ),
+        makeMessage("Sprint review complete. Choose the next sprint to continue.", {
+          action: { type: "start-coding" },
+        }),
+      ]);
+
+      setLogs((prev) => [
+        ...prev,
+        mkLog("Next sprint is ready to start.", "success"),
       ]);
       return;
     }
@@ -280,10 +408,7 @@ const {
 
       setLogs((prev) => [
         ...prev,
-        mkLog(
-          "All sprints complete. Project finished.",
-          "success"
-        ),
+        mkLog("All sprints complete. Project finished.", "success"),
       ]);
       return;
     }
@@ -291,23 +416,20 @@ const {
     if (project.status === "FAILED") {
       setMessages((prev) => [
         ...prev.filter((msg) => !msg.isLoading),
-        makeMessage(
-          "Something went wrong. Check the logs for details."
-        ),
+        makeMessage("Something went wrong. Check the logs for details."),
       ]);
 
-      setLogs((prev) => [
-        ...prev,
-        mkLog("Process failed.", "error"),
-      ]);
-      return;
+      setLogs((prev) => [...prev, mkLog("Process failed.", "error")]);
     }
-  }, [project?.status]);
+  }, [project?.status, projectId]);
 
   /* -------------------- Handlers -------------------- */
 
   const handleSend = (input: string) => {
     if (!input.trim() || isBusy || !projectId) return;
+
+    setPlanningApprovalPending(projectId, true);
+    setProjectRan(projectId);
 
     setMessages((prev) => [
       ...prev,
@@ -321,10 +443,7 @@ const {
       }),
     ]);
 
-    setLogs((prev) => [
-      ...prev,
-      mkLog("Planning started.", "running"),
-    ]);
+    setLogs((prev) => [...prev, mkLog("Planning started.", "info")]);
 
     startPlanning.mutate(
       { prompt: input },
@@ -344,22 +463,18 @@ const {
 
     approvePlanning.mutate(undefined, {
       onSuccess: () => {
+        setPlanningApprovalPending(projectId, false);
+
         setMessages((prev) => [
-          ...prev.filter(
-            (m) => m.action?.type !== "approve-planning"
-          ),
-          makeMessage(
-            "Planning approved! Choose a sprint and start coding.",
-            { action: { type: "start-coding" } }
-          ),
+          ...prev.filter((msg) => msg.action?.type !== "approve-planning"),
+          makeMessage("Planning approved! Choose a sprint and start coding.", {
+            action: { type: "start-coding" },
+          }),
         ]);
 
         setLogs((prev) => [
           ...prev,
-          mkLog(
-            "Planning approved. Ready to start coding.",
-            "success"
-          ),
+          mkLog("Planning approved. Ready to start coding.", "success"),
         ]);
       },
       onError: (error: any) => {
@@ -372,21 +487,24 @@ const {
   };
 
   const handleApproveSprint = () => {
-    if (!projectId || project.status !== "SPRINT_REVIEW")
-      return;
+    if (!projectId || project.status !== "SPRINT_REVIEW") return;
+
+    setMessages((prev) => [
+      ...prev.filter((msg) => msg.action?.type !== "review-sprint"),
+      makeMessage("Sprint approved. Processing next sprint...", {
+        isLoading: true,
+      }),
+    ]);
 
     setLogs((prev) => [
       ...prev,
-      mkLog(
-        "Sprint approved. Moving to next sprint...",
-        "success"
-      ),
+      mkLog("Sprint approved. Moving to next sprint...", "success"),
     ]);
 
     approveSprintReview.mutate(undefined, {
       onError: (error: any) => {
         setMessages((prev) => [
-          ...prev,
+          ...prev.filter((msg) => !msg.isLoading),
           makeMessage(`Error: ${error.message}`),
         ]);
       },
@@ -395,7 +513,7 @@ const {
 
   const handleStartCoding = () => {
     setMessages((prev) =>
-      prev.filter((m) => m.action?.type !== "start-coding")
+      prev.filter((msg) => msg.action?.type !== "start-coding")
     );
   };
 
@@ -406,11 +524,11 @@ const {
     if (!projectId) return;
 
     setMessages((prev) => [
-      ...prev,
+      ...prev.filter((msg) => msg.action?.type !== "review-sprint"),
       {
         id: crypto.randomUUID(),
         role: "user",
-        content: `Reject: ${issueKey} — ${feedback}`,
+        content: `Reject: ${issueKey} - ${feedback}`,
       },
       makeMessage("Retrying sprint with feedback...", {
         isLoading: true,
@@ -419,10 +537,7 @@ const {
 
     setLogs((prev) => [
       ...prev,
-      mkLog(
-        `Ticket ${issueKey} rejected. Feedback submitted.`,
-        "running"
-      ),
+      mkLog(`Ticket ${issueKey} rejected. Feedback submitted.`, "info"),
     ]);
 
     rejectSprintReview.mutate(
@@ -437,8 +552,6 @@ const {
       }
     );
   };
-
-  /* -------------------- Loading States -------------------- */
 
   if (isProjectLoading) {
     return (
@@ -463,25 +576,39 @@ const {
     );
   }
 
-  /* -------------------- Render -------------------- */
-
   return (
     <div className="flex flex-col h-full">
       <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b px-6">
-        <div className="min-w-0">
-          <p className="text-xs text-muted-foreground">
-            {project.status}
-          </p>
-          <h1 className="text-sm font-semibold truncate text-foreground">
-            {project.name}
-          </h1>
+<div className="flex flex-col gap-1 min-w-0">
+  <div className="flex items-center gap-3">
+    <h1 className="text-sm font-semibold truncate text-foreground">
+      {project.name}
+    </h1>
 
-          {project.description && (
-            <p className="text-xs text-muted-foreground truncate mt-1">
-              {project.description}
-            </p>
-          )}
-        </div>
+    <span
+      className={`px-2.5 py-0.5 text-xs rounded-full font-medium
+      ${
+        project.status === "PLANNED"
+          ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+          : project.status === "PLANNING"
+          ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+          : project.status === "CODING"
+          ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+          : project.status === "SPRINT_REVIEW"
+          ? "bg-orange-500/10 text-orange-400 border border-orange-500/20"
+          : "bg-gray-500/10 text-gray-300 border border-gray-500/20"
+      }`}
+    >
+      {project.status}
+    </span>
+  </div>
+
+  {project.description && (
+    <p className="text-xs text-muted-foreground truncate">
+      {project.description}
+    </p>
+  )}
+</div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -501,8 +628,8 @@ const {
 
         <div className="flex w-1/2 flex-col overflow-hidden">
           <AgentLogsPanel
-            status={mapStatusToTimeline(project.status)}
-            logs={logs}
+            status={mapStatusToTimeline(project.status) as any}
+            logs={logs as any}
           />
         </div>
       </div>

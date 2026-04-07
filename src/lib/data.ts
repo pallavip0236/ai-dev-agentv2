@@ -92,59 +92,9 @@ export const agents: Agent[] = [
     ],
     activeTasks: 3
   },
-  {
-    id: "performance",
-    name: "Performance Agent",
-    category: "Quality Assurance",
-    status: "idle",
-    task: "Last Run: 4hr ago",
-    metrics: [
-      { label: "Benchmarks", value: "8" },
-      { label: "Reports", value: "22" },
-      { label: "Avg Response", value: "1.2s" }
-    ],
-    activeTasks: 0
-  },
-  {
-    id: "devops-02",
-    name: "DevOps Agent 02",
-    category: "Operations & Deployment",
-    status: "deploying",
-    task: "Pipeline: Production Build",
-    metrics: [
-      { label: "Builds", value: "98" },
-      { label: "Deployments", value: "45" },
-      { label: "Uptime", value: "99.98%", color: "success" }
-    ],
-    activeTasks: 6
-  },
-  {
-    id: "infra",
-    name: "Infra Agent",
-    category: "Operations & Deployment",
-    status: "monitoring",
-    task: "Infrastructure Monitoring",
-    metrics: [
-      { label: "Nodes", value: "55" },
-      { label: "Pods", value: "210" },
-      { label: "CPU", value: "64%", color: "warning" },
-      { label: "Memory", value: "71%", color: "warning" }
-    ],
-    activeTasks: 2
-  },
-  {
-    id: "monitoring",
-    name: "Monitoring Agent",
-    category: "Operations & Deployment",
-    status: "active",
-    task: "Real-time Monitoring",
-    metrics: [
-      { label: "Latency", value: "45ms" },
-      { label: "Errors", value: "2/min", color: "warning" },
-      { label: "Incidents", value: "1 Open", color: "destructive" }
-    ],
-    activeTasks: 3
-  }
+ 
+
+
 ];
 
 export const projects: Project[] = [
