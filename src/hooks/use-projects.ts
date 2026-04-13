@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Query } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 // Query Keys
@@ -37,7 +38,12 @@ export function useProjects() {
 
 export function useProject(
   projectId: string,
-  options?: { refetchInterval?: number | false }
+  options?: {
+    refetchInterval?:
+      | number
+      | false
+      | ((query: Query<any, Error, any, readonly unknown[]>) => number | false);
+  }
 ) {
   return useQuery({
     queryKey: projectKeys.detail(projectId),
@@ -157,16 +163,14 @@ export function useApprovePlanning(projectId: string) {
 
 export function useStartCoding(projectId: string) {
   const queryClient = useQueryClient();
-  return useMutation<unknown, Error, { sprintId: number }>(
-    {
-      mutationFn: (data) =>
-        api.post(`/api/v1/projects/${projectId}/agent/coding/start`, data),
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
-        queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
-      }
+  return useMutation<unknown, Error, { sprintId: number }>({
+    mutationFn: (data) =>
+      api.post(`/api/v1/projects/${projectId}/agent/coding/start`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
     }
-  );
+  });
 }
 
 export function useApproveSprintReview(projectId: string) {
@@ -183,16 +187,14 @@ export function useApproveSprintReview(projectId: string) {
 
 export function useRejectSprintReview(projectId: string) {
   const queryClient = useQueryClient();
-  return useMutation<unknown, Error, { issueKey: string; feedback: string }>(
-    {
-      mutationFn: (data) =>
-        api.post(`/api/v1/projects/${projectId}/agent/sprint/reject`, data),
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
-        queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
-      }
+  return useMutation<unknown, Error, { issueKey: string; feedback: string }>({
+    mutationFn: (data) =>
+      api.post(`/api/v1/projects/${projectId}/agent/sprint/reject`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
     }
-  );
+  });
 }
 
 export function useCancelAgentRun(projectId: string) {
@@ -226,6 +228,34 @@ export function useLinkJira(projectId?: string) {
         queryClient.invalidateQueries({ queryKey: ["projects", finalProjectId] });
         queryClient.invalidateQueries({ queryKey: projectKeys.detail(finalProjectId) });
       }
+    }
+  });
+}
+
+export function useConnectGithub(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<
+    unknown,
+    Error,
+    { repoUrl: string; pat: string; baseBranch?: string }
+  >({
+    mutationFn: (data) =>
+      api.post(`/api/v1/projects/${projectId}/github/connect`, data).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+    }
+  });
+}
+
+export function useDisconnectGithub(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<unknown, Error, void>({
+    mutationFn: () =>
+      api.delete(`/api/v1/projects/${projectId}/github/disconnect`).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
     }
   });
 }
