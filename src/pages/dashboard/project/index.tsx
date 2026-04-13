@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
 import {
   ExternalLink,
-   Github,
+  Github,
   Link2Off,
   Loader2,
   X,
@@ -25,11 +25,14 @@ import {
   useStartPlanning,
 } from "@/hooks/use-projects";
 
+// Extended to include TESTING and SECURITY_SCAN
 type TimelineStatus =
   | "IDLE"
   | "PLANNING"
   | "PLANNED"
   | "CODING"
+  | "TESTING"
+  | "SECURITY_SCAN"
   | "SPRINT_REVIEW"
   | "FAILED";
 
@@ -75,7 +78,9 @@ function setPlanningApprovalPending(projectId: string, pending: boolean) {
 
 function hasProjectRun(projectId: string) {
   if (typeof window === "undefined") return false;
-  return window.sessionStorage.getItem(projectRanStorageKey(projectId)) === "true";
+  return (
+    window.sessionStorage.getItem(projectRanStorageKey(projectId)) === "true"
+  );
 }
 
 function setProjectRan(projectId: string) {
@@ -89,12 +94,10 @@ function extractRepoName(repoUrl: string) {
     const parts = trimmed.split("/");
     const owner = parts[parts.length - 2];
     const repo = parts[parts.length - 1];
-
     if (owner && repo) return `${owner}/${repo}`;
   } catch {
     return repoUrl;
   }
-
   return repoUrl;
 }
 
@@ -155,19 +158,35 @@ function getInitialMessages(
             ),
           ];
 
+    case "CODING":
+      return [
+        makeMessage("Coding is in progress...", {
+          isLoading: true,
+        }),
+      ];
+
+    case "TESTING":
+      return [
+        makeMessage(
+          "Coding complete! Testing agent is writing unit tests...",
+          { isLoading: true }
+        ),
+      ];
+
+    case "SECURITY_SCAN":
+      return [
+        makeMessage(
+          "Tests written! Security agent is scanning the code for vulnerabilities...",
+          { isLoading: true }
+        ),
+      ];
+
     case "SPRINT_REVIEW":
       return [
         makeMessage(
           "Sprint complete! Review the ticket outcome and approve or reject.",
           { action: { type: "review-sprint" } }
         ),
-      ];
-
-    case "CODING":
-      return [
-        makeMessage("Coding is in progress...", {
-          isLoading: true,
-        }),
       ];
 
     case "FAILED":
@@ -203,6 +222,8 @@ function getInitialMessages(
 
 function mapStatusToTimeline(status: string): TimelineStatus {
   if (status === "CODING") return "CODING";
+  if (status === "TESTING") return "TESTING";
+  if (status === "SECURITY_SCAN") return "SECURITY_SCAN";
   if (status === "SPRINT_REVIEW") return "SPRINT_REVIEW";
   if (status === "FAILED") return "FAILED";
   if (status === "PLANNED") return "PLANNED";
@@ -243,7 +264,6 @@ function GitHubConnectModal({
               Connect a GitHub repo so the coding agent can read and write files.
             </p>
           </div>
-
           <button
             type="button"
             onClick={onClose}
@@ -273,9 +293,7 @@ function GitHubConnectModal({
             <input
               type="password"
               value={form.personalAccessToken}
-              onChange={(e) =>
-                onChange("personalAccessToken", e.target.value)
-              }
+              onChange={(e) => onChange("personalAccessToken", e.target.value)}
               placeholder="github_pat_..."
               className="h-11 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500"
             />
@@ -296,7 +314,6 @@ function GitHubConnectModal({
 
         <div className="flex items-center justify-end border-t border-slate-800 px-6 py-4">
           {error && <p className="mr-auto text-sm text-red-400">{error}</p>}
-
           <button
             type="button"
             onClick={onConnect}
@@ -329,8 +346,10 @@ export default function ProjectPage() {
     refetchInterval: (query) => {
       const data = query.state.data;
       if (!data) return false;
-
-      return data.status === "PLANNING" || data.status === "CODING"
+      // Poll during all active agent states
+      return ["PLANNING", "CODING", "TESTING", "SECURITY_SCAN"].includes(
+        data.status
+      )
         ? 1000
         : false;
     },
@@ -378,7 +397,12 @@ export default function ProjectPage() {
       setProjectRan(projectId);
     }
 
-    if (project.status === "CODING" || project.status === "SPRINT_REVIEW") {
+    if (
+      project.status === "CODING" ||
+      project.status === "TESTING" ||
+      project.status === "SECURITY_SCAN" ||
+      project.status === "SPRINT_REVIEW"
+    ) {
       setProjectRan(projectId);
     }
 
@@ -408,7 +432,6 @@ export default function ProjectPage() {
           (msg) => msg.action?.type === "approve-planning"
         );
         if (alreadyExists) return prev;
-
         return [
           ...prev.filter((msg) => !msg.isLoading),
           makeMessage(
@@ -427,7 +450,6 @@ export default function ProjectPage() {
             "All done! The backlog is empty and all tickets have been implemented."
         );
         if (alreadyExists) return prev;
-
         return [
           ...prev.filter((msg) => !msg.isLoading),
           makeMessage(
@@ -447,10 +469,10 @@ export default function ProjectPage() {
     const previous = prevStatus.current;
     prevStatus.current = project.status;
 
+    /* IDLE → PLANNING */
     if (previous === "IDLE" && project.status === "PLANNING") {
       setPlanningApprovalPending(projectId, true);
       setProjectRan(projectId);
-
       setMessages((prev) => [
         ...prev.filter((msg) => !msg.isLoading),
         makeMessage("Planning backlog and creating tickets...", {
@@ -460,10 +482,10 @@ export default function ProjectPage() {
       return;
     }
 
+    /* PLANNING → PLANNED */
     if (previous === "PLANNING" && project.status === "PLANNED") {
       setPlanningApprovalPending(projectId, true);
       setProjectRan(projectId);
-
       setMessages((prev) => [
         ...prev.filter((msg) => !msg.isLoading),
         makeMessage(
@@ -471,7 +493,6 @@ export default function ProjectPage() {
           { action: { type: "approve-planning" } }
         ),
       ]);
-
       setLogs((prev) => [
         ...prev,
         mkLog("Planning complete. Jira tickets created in backlog.", "success"),
@@ -479,23 +500,73 @@ export default function ProjectPage() {
       return;
     }
 
+    /* PLANNED → CODING */
     if (previous === "PLANNED" && project.status === "CODING") {
       setProjectRan(projectId);
-
       setMessages((prev) => [
         ...prev.filter((msg) => !msg.isLoading),
         makeMessage("Coding agent is starting on your sprint...", {
           isLoading: true,
         }),
       ]);
-
       setLogs((prev) => [...prev, mkLog("Coding agent started.", "info")]);
       return;
     }
 
+    /* CODING → TESTING */
+    if (previous === "CODING" && project.status === "TESTING") {
+      setProjectRan(projectId);
+      setMessages((prev) => [
+        ...prev.filter((msg) => !msg.isLoading),
+        makeMessage(
+          "Coding complete! Testing agent is writing unit tests...",
+          { isLoading: true }
+        ),
+      ]);
+      setLogs((prev) => [
+        ...prev,
+        mkLog("Coding complete. Testing agent started.", "success"),
+      ]);
+      return;
+    }
+
+    /* TESTING → SECURITY_SCAN */
+    if (previous === "TESTING" && project.status === "SECURITY_SCAN") {
+      setProjectRan(projectId);
+      setMessages((prev) => [
+        ...prev.filter((msg) => !msg.isLoading),
+        makeMessage(
+          "Tests written! Security agent is scanning the code for vulnerabilities...",
+          { isLoading: true }
+        ),
+      ]);
+      setLogs((prev) => [
+        ...prev,
+        mkLog("Testing complete. Security scan started.", "success"),
+      ]);
+      return;
+    }
+
+    /* SECURITY_SCAN → SPRINT_REVIEW */
+    if (previous === "SECURITY_SCAN" && project.status === "SPRINT_REVIEW") {
+      setProjectRan(projectId);
+      setMessages((prev) => [
+        ...prev.filter((msg) => !msg.isLoading),
+        makeMessage(
+          "Sprint complete! Review the results and approve to continue, or reject a ticket with feedback.",
+          { action: { type: "review-sprint" } }
+        ),
+      ]);
+      setLogs((prev) => [
+        ...prev,
+        mkLog("Security scan complete. Awaiting HIL review.", "success"),
+      ]);
+      return;
+    }
+
+    /* CODING → SPRINT_REVIEW (no-GitHub / no-testing path) */
     if (previous === "CODING" && project.status === "SPRINT_REVIEW") {
       setProjectRan(projectId);
-
       setMessages((prev) => [
         ...prev.filter((msg) => !msg.isLoading),
         makeMessage(
@@ -503,7 +574,6 @@ export default function ProjectPage() {
           { action: { type: "review-sprint" } }
         ),
       ]);
-
       setLogs((prev) => [
         ...prev,
         mkLog("Sprint complete. Awaiting HIL review.", "success"),
@@ -511,9 +581,9 @@ export default function ProjectPage() {
       return;
     }
 
+    /* SPRINT_REVIEW → CODING (reject / next sprint) */
     if (previous === "SPRINT_REVIEW" && project.status === "CODING") {
       setProjectRan(projectId);
-
       setMessages((prev) => [
         ...prev.filter(
           (msg) => !msg.isLoading && msg.action?.type !== "review-sprint"
@@ -523,7 +593,6 @@ export default function ProjectPage() {
           { isLoading: true }
         ),
       ]);
-
       setLogs((prev) => [
         ...prev,
         mkLog("Sprint review actioned. Coding agent restarted.", "info"),
@@ -531,16 +600,17 @@ export default function ProjectPage() {
       return;
     }
 
+    /* SPRINT_REVIEW → PLANNED (approved, more sprints available) */
     if (previous === "SPRINT_REVIEW" && project.status === "PLANNED") {
       setMessages((prev) => [
         ...prev.filter(
           (msg) => !msg.isLoading && msg.action?.type !== "review-sprint"
         ),
-        makeMessage("Sprint review complete. Choose the next sprint to continue.", {
-          action: { type: "start-coding" },
-        }),
+        makeMessage(
+          "Sprint review complete. Choose the next sprint to continue.",
+          { action: { type: "start-coding" } }
+        ),
       ]);
-
       setLogs((prev) => [
         ...prev,
         mkLog("Next sprint is ready to start.", "success"),
@@ -548,6 +618,7 @@ export default function ProjectPage() {
       return;
     }
 
+    /* CODING → IDLE (all done) */
     if (previous === "CODING" && project.status === "IDLE") {
       setMessages((prev) => [
         ...prev.filter((msg) => !msg.isLoading),
@@ -555,7 +626,6 @@ export default function ProjectPage() {
           "All done! The backlog is empty and all tickets have been implemented."
         ),
       ]);
-
       setLogs((prev) => [
         ...prev,
         mkLog("All sprints complete. Project finished.", "success"),
@@ -563,12 +633,12 @@ export default function ProjectPage() {
       return;
     }
 
+    /* → FAILED */
     if (project.status === "FAILED") {
       setMessages((prev) => [
         ...prev.filter((msg) => !msg.isLoading),
         makeMessage("Something went wrong. Check the logs for details."),
       ]);
-
       setLogs((prev) => [...prev, mkLog("Process failed.", "error")]);
     }
   }, [project?.status, projectId]);
@@ -614,14 +684,12 @@ export default function ProjectPage() {
     approvePlanning.mutate(undefined, {
       onSuccess: () => {
         setPlanningApprovalPending(projectId, false);
-
         setMessages((prev) => [
           ...prev.filter((msg) => msg.action?.type !== "approve-planning"),
           makeMessage("Planning approved! Choose a sprint and start coding.", {
             action: { type: "start-coding" },
           }),
         ]);
-
         setLogs((prev) => [
           ...prev,
           mkLog("Planning approved. Ready to start coding.", "success"),
@@ -667,10 +735,7 @@ export default function ProjectPage() {
     );
   };
 
-  const handleRejectSprint = (
-    issueKey: string,
-    feedback: string
-  ) => {
+  const handleRejectSprint = (issueKey: string, feedback: string) => {
     if (!projectId) return;
 
     setMessages((prev) => [
@@ -707,10 +772,7 @@ export default function ProjectPage() {
     field: keyof GitHubFormState,
     value: string
   ) => {
-    setGitHubForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setGitHubForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleConnectGitHub = () => {
@@ -732,16 +794,10 @@ export default function ProjectPage() {
       {
         onSuccess: () => {
           setIsGitHubModalOpen(false);
-          setGitHubForm({
-            repoUrl: "",
-            personalAccessToken: "",
-            baseBranch: "main",
-          });
+          setGitHubForm({ repoUrl: "", personalAccessToken: "", baseBranch: "main" });
         },
         onError: (error: any) => {
-          setGitHubError(
-            error?.message || "Failed to connect GitHub repository."
-          );
+          setGitHubError(error?.message || "Failed to connect GitHub repository.");
         },
       }
     );
@@ -749,12 +805,9 @@ export default function ProjectPage() {
 
   const handleDisconnectGitHub = () => {
     if (!projectId) return;
-
     disconnectGithub.mutate(undefined, {
       onError: (error: any) => {
-        setGitHubError(
-          error?.message || "Failed to disconnect GitHub repository."
-        );
+        setGitHubError(error?.message || "Failed to disconnect GitHub repository.");
       },
     });
   };
@@ -794,16 +847,19 @@ export default function ProjectPage() {
 
               <span
                 className={`px-2.5 py-0.5 text-xs rounded-full font-medium
-                ${
-                  project.status === "PLANNED"
-                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                    : project.status === "PLANNING"
-                    ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
-                    : project.status === "CODING"
-                    ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
-                    : project.status === "SPRINT_REVIEW"
-                    ? "bg-orange-500/10 text-orange-400 border border-orange-500/20"
-                    : "bg-gray-500/10 text-gray-300 border border-gray-500/20"
+                ${project.status === "PLANNED"
+                  ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                  : project.status === "PLANNING"
+                  ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+                  : project.status === "CODING"
+                  ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                  : project.status === "TESTING"
+                  ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
+                  : project.status === "SECURITY_SCAN"
+                  ? "bg-orange-500/10 text-orange-400 border border-orange-500/20"
+                  : project.status === "SPRINT_REVIEW"
+                  ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                  : "bg-gray-500/10 text-gray-300 border border-gray-500/20"
                 }`}
               >
                 {project.status}
@@ -826,7 +882,7 @@ export default function ProjectPage() {
                   rel="noreferrer"
                   className="inline-flex h-9 max-w-[240px] items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-slate-200 transition hover:bg-slate-800"
                 >
-<Github className="h-4 w-4 text-slate-300" />
+                  <Github className="h-4 w-4 text-slate-300" />
                   <span className="truncate">
                     {extractRepoName(project.githubRepoUrl)}
                   </span>
@@ -867,7 +923,7 @@ export default function ProjectPage() {
                 }}
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm font-medium text-slate-100 transition hover:bg-slate-800"
               >
-<Github className="h-4 w-4" />
+                <Github className="h-4 w-4" />
                 Connect GitHub
               </button>
             )}

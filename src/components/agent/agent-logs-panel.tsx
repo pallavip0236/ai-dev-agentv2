@@ -7,7 +7,9 @@ export const TIMELINE = [
   "IDLE",
   "PLANNING",
   "PLANNED",
-  "CODING"
+  "CODING",
+  "TESTING",
+  "SECURITY_SCAN",
 ] as const;
 
 export type TimelineStatus =
@@ -15,6 +17,8 @@ export type TimelineStatus =
   | "PLANNING"
   | "PLANNED"
   | "CODING"
+  | "TESTING"
+  | "SECURITY_SCAN"
   | "SPRINT_REVIEW"
   | "FAILED";
 
@@ -31,22 +35,39 @@ type AgentLogsPanelProps = {
   status: TimelineStatus;
 };
 
+const TIMELINE_LABELS: Record<string, string> = {
+  IDLE: "Idle",
+  PLANNING: "Planning",
+  PLANNED: "Planned",
+  CODING: "Coding",
+  TESTING: "Testing",
+  SECURITY_SCAN: "Security",
+};
+
 /* ---------------- TIMELINE ---------------- */
 
 function StatusTimeline({ status }: { status: TimelineStatus }) {
   const isFailed = status === "FAILED";
   const isReview = status === "SPRINT_REVIEW";
 
-  const effective = isFailed || isReview ? "CODING" : status;
+  // When SPRINT_REVIEW, all steps are shown as done (currentIdx past end)
+  const effective = isReview
+    ? null
+    : isFailed
+    ? "CODING"
+    : status;
 
-  const currentIdx = TIMELINE.indexOf(effective as any);
+  const currentIdx =
+    effective === null
+      ? TIMELINE.length
+      : TIMELINE.indexOf(effective as any);
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start">
         {TIMELINE.map((step, idx) => {
           const done = idx < currentIdx;
-          const current = idx === currentIdx;
+          const current = idx === currentIdx && effective !== null;
 
           return (
             <Fragment key={step}>
@@ -65,14 +86,14 @@ function StatusTimeline({ status }: { status: TimelineStatus }) {
 
                 <span
                   className={`
-                  text-xs
-                  ${current && !isFailed && "text-white"}
-                  ${current && isFailed && "text-red-400"}
+                  text-xs whitespace-nowrap
+                  ${current && !isFailed && "text-white font-medium"}
+                  ${current && isFailed && "text-red-400 font-medium"}
                   ${done && "text-white"}
                   ${!done && !current && "text-gray-400"}
                 `}
                 >
-                  {step}
+                  {TIMELINE_LABELS[step] ?? step}
                 </span>
               </div>
 
@@ -113,6 +134,8 @@ export function AgentLogsPanel({ logs, status }: AgentLogsPanelProps) {
   const isRunning =
     status === "PLANNING" ||
     status === "CODING" ||
+    status === "TESTING" ||
+    status === "SECURITY_SCAN" ||
     status === "SPRINT_REVIEW";
 
   useEffect(() => {
@@ -136,6 +159,26 @@ export function AgentLogsPanel({ logs, status }: AgentLogsPanelProps) {
         {/* TIMELINE */}
         <StatusTimeline status={status} />
 
+        {/* TESTING IN-PROGRESS INDICATOR */}
+        {status === "TESTING" && (
+          <div className="flex items-center gap-2 text-sm text-gray-400 rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+            <Loader2 className="size-4 animate-spin shrink-0 text-cyan-400" />
+            <span className="animate-pulse">
+              Testing agent is writing tests...
+            </span>
+          </div>
+        )}
+
+        {/* SECURITY SCAN IN-PROGRESS INDICATOR */}
+        {status === "SECURITY_SCAN" && (
+          <div className="flex items-center gap-2 text-sm text-gray-400 rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+            <Loader2 className="size-4 animate-spin shrink-0 text-cyan-400" />
+            <span className="animate-pulse">
+              Security agent is scanning code...
+            </span>
+          </div>
+        )}
+
         <div className="border-t border-white/10" />
 
         {/* LOGS */}
@@ -152,7 +195,7 @@ export function AgentLogsPanel({ logs, status }: AgentLogsPanelProps) {
                     hour: "2-digit",
                     minute: "2-digit",
                     second: "2-digit",
-                    hour12: false
+                    hour12: false,
                   })}
                 </span>
                 <span className="shrink-0 text-gray-400 uppercase text-xs">
