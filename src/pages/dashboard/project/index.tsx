@@ -253,9 +253,8 @@ function GitHubConnectModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-[#0f172a] shadow-2xl">
-        <div className="flex items-start justify-between border-b border-slate-800 px-6 py-4">
+<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+<div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">        <div className="flex items-start justify-between border-b border-slate-800 px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold text-white">
               Connect GitHub Repository
@@ -880,8 +879,7 @@ export default function ProjectPage() {
                   href={project.githubRepoUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-9 max-w-[240px] items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-slate-200 transition hover:bg-slate-800"
-                >
+className="inline-flex h-9 max-w-[240px] items-center gap-2 rounded-lg border border-border bg-muted px-3 text-sm text-foreground transition hover:bg-muted/80"                >
                   <Github className="h-4 w-4 text-slate-300" />
                   <span className="truncate">
                     {extractRepoName(project.githubRepoUrl)}
@@ -892,8 +890,7 @@ export default function ProjectPage() {
                   type="button"
                   onClick={handleDisconnectGitHub}
                   disabled={disconnectGithub.isPending}
-                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-700 bg-transparent px-3 text-sm font-medium text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                >
+className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-muted px-3 text-sm font-medium text-foreground transition hover:bg-muted/80 disabled:cursor-not-allowed disabled:opacity-60"                >
                   {disconnectGithub.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
@@ -907,8 +904,7 @@ export default function ProjectPage() {
                     href={project.githubPrUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-700 bg-transparent px-3 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
-                  >
+className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-muted px-3 text-sm font-medium text-foreground transition hover:bg-muted/80"                  >
                     <ExternalLink className="h-4 w-4" />
                     View PR
                   </a>
@@ -921,8 +917,7 @@ export default function ProjectPage() {
                   setGitHubError(null);
                   setIsGitHubModalOpen(true);
                 }}
-                className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm font-medium text-slate-100 transition hover:bg-slate-800"
-              >
+className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-muted px-3 text-sm font-medium text-foreground transition hover:bg-muted/80"              >
                 <Github className="h-4 w-4" />
                 Connect GitHub
               </button>

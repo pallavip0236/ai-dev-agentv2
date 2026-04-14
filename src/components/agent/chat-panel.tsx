@@ -193,9 +193,8 @@ export function ChatPanel({
       : "Describe your requirement...";
 
   return (
-    <div className="flex flex-col h-screen bg-[#0b1120] text-white">
-      <div className="p-4 border-b border-white/10 flex items-center gap-2">
-        <Bot className="text-blue-400" size={20} />
+<div className="flex flex-col h-screen bg-background text-foreground">     
+<div className="p-4 border-b border-border flex items-center gap-2">        <Bot className="text-blue-400" size={20} />
         <h2 className="font-semibold text-lg">Jira AI Agent</h2>
       </div>
 
@@ -212,7 +211,7 @@ export function ChatPanel({
                 className={`px-4 py-3 rounded-xl text-sm flex items-start gap-2 ${
                   msg.role === "user"
                     ? "bg-blue-600 text-white"
-                    : "bg-[#1e293b] border border-white/10"
+                    : "bg-card border border-border text-card-foreground"
                 }`}
               >
                 {msg.role === "agent" && (
@@ -279,13 +278,13 @@ export function ChatPanel({
                         <input
                           type="text"
                           placeholder="Issue key (e.g. SCRUM-5)"
-                          className="bg-[#111827] border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                          className="bg-muted border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                           value={issueKey}
                           onChange={(e) => setIssueKey(e.target.value)}
                         />
                         <textarea
                           placeholder="Enter feedback..."
-                          className="bg-[#111827] border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                          className="bg-muted border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                           value={feedback}
                           onChange={(e) => setFeedback(e.target.value)}
                         />
@@ -308,11 +307,10 @@ export function ChatPanel({
         <div ref={bottomRef} />
       </div>
 
-      <div className="p-4 border-t border-white/10 flex gap-2 bg-[#0b1120]">
-        <input
+<div className="p-4 border-t border-border flex gap-2 bg-background">        <input
           type="text"
           placeholder={placeholder}
-          className="flex-1 bg-[#111827] border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 bg-muted border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}

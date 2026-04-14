@@ -78,21 +78,20 @@ function StatusTimeline({ status }: { status: TimelineStatus }) {
                   ${done && "bg-cyan-500 text-white"}
                   ${current && !isFailed && "ring-2 ring-cyan-400 text-cyan-400"}
                   ${current && isFailed && "ring-2 ring-red-500 text-red-400"}
-                  ${!done && !current && "bg-white/10 text-gray-400"}
-                `}
+${!done && !current && "bg-muted text-muted-foreground"}                `}
                 >
                   {done ? <Check size={12} /> : idx + 1}
                 </div>
 
-                <span
-                  className={`
-                  text-xs whitespace-nowrap
-                  ${current && !isFailed && "text-white font-medium"}
-                  ${current && isFailed && "text-red-400 font-medium"}
-                  ${done && "text-white"}
-                  ${!done && !current && "text-gray-400"}
-                `}
-                >
+         <span
+  className={`
+  text-xs whitespace-nowrap
+  ${current && !isFailed && "text-foreground font-medium"}
+  ${current && isFailed && "text-red-400 font-medium"}
+  ${done && "text-foreground"}
+  ${!done && !current && "text-muted-foreground"}
+`}
+>
                   {TIMELINE_LABELS[step] ?? step}
                 </span>
               </div>
@@ -100,7 +99,7 @@ function StatusTimeline({ status }: { status: TimelineStatus }) {
               {idx < TIMELINE.length - 1 && (
                 <div
                   className={`flex-1 h-px mt-3 mx-1 ${
-                    done ? "bg-cyan-500" : "bg-white/10"
+                    done ? "bg-cyan-500" : "bg-muted"
                   }`}
                 />
               )}
@@ -143,9 +142,8 @@ export function AgentLogsPanel({ logs, status }: AgentLogsPanelProps) {
   }, [logs.length]);
 
   return (
-    <div className="flex flex-col h-full bg-[#0f1730] text-white">
-      {/* HEADER */}
-      <div className="flex h-11 items-center gap-2 border-b border-white/10 px-5">
+<div className="flex flex-col h-full bg-card text-card-foreground">      {/* HEADER */}
+      <div className="flex h-11 items-center gap-2 border-b border-border px-5">
         <span className="text-xs font-medium text-gray-400 uppercase">
           Logs
         </span>
@@ -161,7 +159,7 @@ export function AgentLogsPanel({ logs, status }: AgentLogsPanelProps) {
 
         {/* TESTING IN-PROGRESS INDICATOR */}
         {status === "TESTING" && (
-          <div className="flex items-center gap-2 text-sm text-gray-400 rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+          <div className="flex items-center gap-2 text-sm text-gray-400 rounded-lg border border-border bg-muted px-4 py-3">
             <Loader2 className="size-4 animate-spin shrink-0 text-cyan-400" />
             <span className="animate-pulse">
               Testing agent is writing tests...
@@ -171,7 +169,7 @@ export function AgentLogsPanel({ logs, status }: AgentLogsPanelProps) {
 
         {/* SECURITY SCAN IN-PROGRESS INDICATOR */}
         {status === "SECURITY_SCAN" && (
-          <div className="flex items-center gap-2 text-sm text-gray-400 rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+          <div className="flex items-center gap-2 text-sm text-gray-400 rounded-lg border border-border bg-muted px-4 py-3">
             <Loader2 className="size-4 animate-spin shrink-0 text-cyan-400" />
             <span className="animate-pulse">
               Security agent is scanning code...
@@ -179,7 +177,7 @@ export function AgentLogsPanel({ logs, status }: AgentLogsPanelProps) {
           </div>
         )}
 
-        <div className="border-t border-white/10" />
+        <div className="border-t border-border" />
 
         {/* LOGS */}
         {logs.length === 0 ? (
@@ -205,8 +203,7 @@ export function AgentLogsPanel({ logs, status }: AgentLogsPanelProps) {
                   className={`
                     ${log.status === "success" && "text-green-400"}
                     ${log.status === "error" && "text-red-400"}
-                    ${log.status === "running" && "text-white"}
-                  `}
+${log.status === "running" && "text-foreground"}                  `}
                 >
                   {log.message}
                 </span>

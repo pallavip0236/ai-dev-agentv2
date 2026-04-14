@@ -23,19 +23,37 @@ export function ThemeToggle() {
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
-          Light
-        </DropdownMenuItem>
+<DropdownMenuContent
+  align="end"
+  className="
+    bg-[#0f1730]
+    border border-white/10
+    shadow-xl
+    rounded-md
+    text-white
+  "
+>
+  <DropdownMenuItem
+    className="hover:bg-cyan-500/20 cursor-pointer"
+    onClick={() => setTheme("light")}
+  >
+    Light
+  </DropdownMenuItem>
 
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
-          Dark
-        </DropdownMenuItem>
+  <DropdownMenuItem
+    className="hover:bg-cyan-500/20 cursor-pointer"
+    onClick={() => setTheme("dark")}
+  >
+    Dark
+  </DropdownMenuItem>
 
-        <DropdownMenuItem onClick={() => setTheme("system")}>
-          System
-        </DropdownMenuItem>
-      </DropdownMenuContent>
+  <DropdownMenuItem
+    className="hover:bg-cyan-500/20 cursor-pointer"
+    onClick={() => setTheme("system")}
+  >
+    System
+  </DropdownMenuItem>
+</DropdownMenuContent>
     </DropdownMenu>
   );
 }
